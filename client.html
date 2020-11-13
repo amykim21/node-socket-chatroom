@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+   <head><title>Chat</title>
+      <script src="/socket.io/socket.io.js"></script>
+      
+   </head>
+   <body>
+      <p id="alert"></p>
+
+      <form id="username-form" action="default.js">
+         <label for='username'>Username:</label>
+         <input id='username' name='username' type='text' required>
+         <input type='submit' value='Submit'>
+      </form><br>
+
+      <div id="chatrooms">
+         <p id="room-alert"></p>
+         <form id="room-form" action="client.js">
+            <label for='room-name'>Room Name:</label>
+            <input id='room-name' name='room-name' type='text' required>
+            <input type='submit' value='Create'>
+         </form>
+         <div id="chatrooms-div"></div>
+      </div>
+
+      <div id="room-div" style="visibility:hidden">
+         <h3 id="room-name-display">Room</h3>
+         <p id="room-users">room users</p>
+         <input type="text" id="message_input"/>
+         <button id="send-btn">send</button>
+
+         <label for="whisper_input">Whisper: </label>
+         <input type="text" id="whisper_input"/>
+         <span> to </span>
+         <input type="text" id="whisper_target"/>
+         <button id="whisper-btn">whisper</button>
+         <div id="chatlog"></div>
+      </div>
+
+      <script>
+      var socketio = io.connect();
+      let user = "";
+      socketio.on("message_to_client",function(data) {
+         //Append an HR thematic break and the escaped HTML of the new message
+         document.getElementById("chatlog").appendChild(document.createElement("hr"));
+         document.getElementById("chatlog").appendChild(document.createTextNode(data['message']));
+      });
+
+      function sendMessage(){
+         var msg = document.getElementById("message_input").value;
+
+         // TODO: make a way to emit to a specific room
+         socketio.emit("message_to_server", {message:msg, user: user});
+      }
+
+      // create chatroom form
+      let roomForm = document.getElementById("room-form");
+      roomForm.addEventListener("submit", function(event) {
+         event.preventDefault();
+         const roomName = document.getElementById("room-name").value;
+         
+         // document.getElementById("chatrooms-div").appendChild(document.createTextNode(roomName));
+
+         socketio.emit("new_room", {  roomname: roomName });
+
+         socketio.on("new_room_added",function(data) {
+            document.getElementById("room-alert").textContent = data['message'];
+
+            document.getElementById("chatrooms-div").innerHTML = ""; // clear chatrooms-div?
+            // show list of rooms available
+            socketio.on("get_rooms",function(data) {
+               document.getElementById("chatrooms-div").innerHTML = ""; // clear chatrooms-div?
+                  // io.sockets.adapter.rooms
+               const rooms = data["rooms"];
+               rooms.forEach(room => {
+                  let roomElement = document.createElement("hr");
+                  roomElement.appendChild(document.createTextNode(room));
+                  roomElement.setAttribute("id", room);
+                  roomElement.addEventListener("click", function(event) {
+                     enterRoom(room, user);
+                  }, false);
+                  document.getElementById("chatrooms-div").appendChild(roomElement);
+               });
+            });
+
+            // let roomElement = document.createElement("hr");
+            // roomElement.appendChild(document.createTextNode(data['roomname']));
+            // roomElement.setAttribute("id", data['roomname']);
+            // roomElement.addEventListener("click", function(event) {
+            //    enterRoom(data['roomname'], user);
+            // }, false);
+            // document.getElementById("chatrooms-div").appendChild(roomElement);
+            // document.getElementById("room-form").setAttribute("style", "display: none");
+         });
+
+         socketio.on("new_room_denied",function(data) {
+            document.getElementById("room-alert").textContent = data['message'];
+         });
+      }, false);
+
+      function enterRoom(roomname, username) {
+         // TODO: hide everything other than room
+         socketio.emit("enter_room", { roomname : roomname, username: username });
+         // get list of users
+         socketio.emit("get_room_users", { roomname: roomname });
+         socketio.on("get_room_users",function(data) {
+            document.getElementById("room-users").textContent = data["message"];
+         });
+
+         document.getElementById("chatrooms").setAttribute("style", "display:none");
+         document.getElementById("room-div").setAttribute("style", "visibility:visible");
+
+         document.getElementById("room-name-display").textContent = roomname;
+         // location.href = "room.html";
+      }
+
+      // username form
+      const startForm = document.getElementById("username-form");
+      startForm.addEventListener("submit", function(event) {
+         event.preventDefault();
+         const username = document.getElementById("username").value;
+         socketio.emit("new_user", {  username: username });
+         console.log("username submitted: " + username);
+
+         socketio.on("new_user_added",function(data) {
+            user = username;
+            document.getElementById("alert").textContent = data['message'];
+            document.getElementById("username-form").setAttribute("style", "display: none");
+
+            // show list of rooms available
+            socketio.on("get_rooms",function(data) {
+               document.getElementById("chatrooms-div").innerHTML = ""; // clear chatrooms-div?
+               // io.sockets.adapter.rooms
+               const rooms = data["rooms"];
+               rooms.forEach(room => {
+                  let roomElement = document.createElement("hr");
+                  roomElement.appendChild(document.createTextNode(room));
+                  roomElement.setAttribute("id", room);
+                  roomElement.addEventListener("click", function(event) {
+                     enterRoom(room, user);
+                  }, false);
+                  document.getElementById("chatrooms-div").appendChild(roomElement);
+               });
+            });
+         });
+
+         socketio.on("new_user_denied",function(data) {
+            document.getElementById("alert").textContent = data['message'];
+         });
+      }, false);
+
+      document.getElementById("send-btn").addEventListener("click", sendMessage, false);
+      </script>
+   </body>
+</html>
