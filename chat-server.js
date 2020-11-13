@@ -141,8 +141,6 @@ io.sockets.on("connection", function (socket) {
 		);
 
 
-		
-
 		// moved this chunk to inside 'enter_room'
 		socket.on('message_to_server', function (data) {
 			// This callback runs when the server receives a new message from the client.
@@ -152,7 +150,23 @@ io.sockets.on("connection", function (socket) {
 			io.sockets.to(roomname).emit("message_to_client", { message: message }) // broadcast the message to other users
 		});
 
-		// todo: leave room
+		// socket.on('whisper_to_server', function (data) {
+		// 	// This callback runs when the server receives a new message from the client.
+		// 	console.log("whisper: " + data["whisper"]); // log it to the Node.JS output
+		// 	let whisper = data["user"] + ": " + data["whisper"];
+		// 	let whisperroomname = "whisper" + data["user"];
+		// 	socket.join(whisperroomname);
+		// 	// todo: how to make whisperTarget join whisperroom?
+		// 	io.sockets.to(whisperroomname).emit("message_to_client", { message: whisper }) // broadcast the message to other users
+		// });
+
+		// leave room
+		socket.on("leave_room", function (data) {
+			socket.leave(roomname);
+			io.sockets.to(roomname).emit(
+				"message_to_client", { message: `${username} has left the chatroom.` }
+			);
+		});
 	});
 
 	socket.on("get_room_users", function(data) {

@@ -24,17 +24,19 @@
       </div>
 
       <div id="room-div" style="visibility:hidden">
+         <button id="leave-room-btn">Leave Room</button>
          <h3 id="room-name-display">Room</h3>
          <p id="room-users">room users</p>
-         <input type="text" id="message_input"/>
+         <input type="text" id="message_input" required>
          <button id="send-btn">send</button>
-
+         <br>
          <label for="whisper_input">Whisper: </label>
-         <input type="text" id="whisper_input"/>
+         <input type="text" id="whisper_input" required>
          <span> to </span>
-         <input type="text" id="whisper_target"/>
+         <input type="text" id="whisper_target" required>
          <button id="whisper-btn">whisper</button>
          <div id="chatlog"></div>
+
       </div>
 
       <script>
@@ -48,9 +50,21 @@
 
       function sendMessage(){
          var msg = document.getElementById("message_input").value;
-
-         // TODO: make a way to emit to a specific room
          socketio.emit("message_to_server", {message:msg, user: user});
+      }
+
+      socketio.on("whisper_to_client",function(data) {
+         // todo: make whispers green text
+         //Append an HR thematic break and the escaped HTML of the new message
+         document.getElementById("chatlog").appendChild(document.createElement("hr"));
+         document.getElementById("chatlog").appendChild(document.createTextNode(data['message']));
+      });
+
+      function sendWhisper() {
+         let whisper = document.getElementById("whisper_input").value;
+         let whisperTarget = document.getElementById("whisper_target").value;
+
+         socketio.emit("whisper_to_server", { whisper: whisper, user: user, target: whisperTarget});
       }
 
       // create chatroom form
@@ -99,7 +113,6 @@
       }, false);
 
       function enterRoom(roomname, username) {
-         // TODO: hide everything other than room
          socketio.emit("enter_room", { roomname : roomname, username: username });
          // get list of users
          socketio.emit("get_room_users", { roomname: roomname });
@@ -111,7 +124,15 @@
          document.getElementById("room-div").setAttribute("style", "visibility:visible");
 
          document.getElementById("room-name-display").textContent = roomname;
-         // location.href = "room.html";
+      }
+
+      function leaveRoom() {
+         socketio.emit("leave_room", { username: user });
+
+         // hide room-div
+         document.getElementById("chatrooms").setAttribute("style", "display:unset");
+         document.getElementById("room-div").setAttribute("style", "visibility:hidden");
+         // show starting page
       }
 
       // username form
@@ -150,6 +171,8 @@
       }, false);
 
       document.getElementById("send-btn").addEventListener("click", sendMessage, false);
+      document.getElementById("whisper-btn").addEventListener("click", sendWhisper, false);
+      document.getElementById("leave-room-btn").addEventListener("click", leaveRoom, false);
       </script>
    </body>
 </html>
