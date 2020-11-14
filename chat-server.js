@@ -84,7 +84,8 @@ const socketio = require("socket.io")(server, {
 });
 
 // array storing usernames; use array.includes() to see if username already exists, array.push()
-let usernames = [];
+let usernames = []; // todo: don't need this, just use users.keys() instead
+let users = {}; // dictionary of (nickname, socket)
 let rooms = new Map(); // map of ["roomname", [username1, username2, ...]]
 // list of rooms can be accessed with io.sockets.adapter.rooms?
 
@@ -104,7 +105,14 @@ io.sockets.on("connection", function (socket) {
 			socket.emit("new_user_added", { message : `Welcome, ${username}`} );
 			
 			// emit list of rooms available
-			console.log("room keys: " + Array.from(rooms.keys()));
+			// console.log("room keys: " + Array.from(rooms.keys()));
+			// console.log("roomusers: " + socket.roomUsers);
+			// console.log("rooms: " + socket.rooms);
+			socket.username = username;
+			users[username] = socket;
+			console.log("username: " + socket.username); // wahwah
+
+
 			socket.emit("get_rooms", { rooms : Array.from(rooms.keys()) } );
 		}
 
@@ -150,15 +158,13 @@ io.sockets.on("connection", function (socket) {
 			io.sockets.to(roomname).emit("message_to_client", { message: message }) // broadcast the message to other users
 		});
 
-		// socket.on('whisper_to_server', function (data) {
-		// 	// This callback runs when the server receives a new message from the client.
-		// 	console.log("whisper: " + data["whisper"]); // log it to the Node.JS output
-		// 	let whisper = data["user"] + ": " + data["whisper"];
-		// 	let whisperroomname = "whisper" + data["user"];
-		// 	socket.join(whisperroomname);
-		// 	// todo: how to make whisperTarget join whisperroom?
-		// 	io.sockets.to(whisperroomname).emit("message_to_client", { message: whisper }) // broadcast the message to other users
-		// });
+		socket.on('whisper_to_server', function (data) {
+			// This callback runs when the server receives a new message from the client.
+			let whisper = data["user"] + " sent a private message: " + data["whisper"];
+			console.log(whisper); // log it to the Node.JS output
+			console.log("target socket: " + users[data["target"]]);
+			io.sockets.to(users[data["target"]].id).emit("message_to_client", { message: whisper }) // wahwah not working
+		});
 
 		// leave room
 		socket.on("leave_room", function (data) {
@@ -171,7 +177,7 @@ io.sockets.on("connection", function (socket) {
 
 	socket.on("get_room_users", function(data) {
 		let roomUsers = "Room users:";
-		console.log("room users: " + rooms.get(data["roomname"]));
+		// console.log("room users: " + rooms.get(data["roomname"]));
 		rooms.get(data["roomname"]).forEach(userInRoom => {
 			roomUsers = roomUsers + " " + userInRoom;
 		});
