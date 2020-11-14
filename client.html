@@ -76,7 +76,6 @@
          // document.getElementById("chatrooms-div").appendChild(document.createTextNode(roomName));
 
          socketio.emit("new_room", {  roomname: roomName });
-
          socketio.on("new_room_added",function(data) {
             document.getElementById("room-alert").textContent = data['message'];
 

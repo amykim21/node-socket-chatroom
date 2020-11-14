@@ -86,7 +86,8 @@ const socketio = require("socket.io")(server, {
 // array storing usernames; use array.includes() to see if username already exists, array.push()
 let usernames = []; // todo: don't need this, just use users.keys() instead
 let users = {}; // dictionary of (nickname, socket)
-let rooms = new Map(); // map of ["roomname", [username1, username2, ...]]
+let rooms = new Map(); // map of ["roomname", [username1, username2, ...]] 
+// let rooms = new Map(); // map of roomname to (array of users, password)
 // list of rooms can be accessed with io.sockets.adapter.rooms?
 
 // Attach our Socket.IO server to our HTTP server to listen
@@ -126,8 +127,10 @@ io.sockets.on("connection", function (socket) {
 			socket.emit("new_room_denied", { message : `Roomname "${roomname}" already exists.`, roomname: roomname} );
 		} else {
 			rooms.set(roomname, []);
-			socket.emit("new_room_added", { message : `${roomname} has been created.`, roomname: roomname } );
-			socket.emit("get_rooms", { rooms : Array.from(rooms.keys()) } );
+			io.sockets.emit("new_room_added", { message : `${roomname} has been created.`, roomname: roomname } );
+			io.sockets.emit("get_rooms", { rooms : Array.from(rooms.keys()) } );
+			// socket.emit("new_room_added", { message : `${roomname} has been created.`, roomname: roomname } );
+			// socket.emit("get_rooms", { rooms : Array.from(rooms.keys()) } );
 		}
 
 	});
