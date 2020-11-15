@@ -95,7 +95,6 @@ const io = socketio.listen(server);
 io.sockets.on("connection", function (socket) {
 	// This callback runs when a new Socket.IO connection is established.
 
-	// wah
 	socket.on('new_user', function({ username: username }) {
 		console.log(`inside socket new_user ${username}`);
 
@@ -122,6 +121,8 @@ io.sockets.on("connection", function (socket) {
 	// wah
 	socket.on('new_room', function({ roomname: roomname, password: password }) {
 		console.log(`inside socket new_room ${roomname}`);
+		// console.log("io.sockets.adapter.rooms.get: " + io.sockets.adapter.rooms[roomname]);
+		// console.log("nsps: " + io.nsps[yourNamespace].adapter.rooms[roomname]);
 
 		if(rooms.has(roomname)) {
 			socket.emit("new_room_denied", { message : `Roomname "${roomname}" already exists.`, roomname: roomname} );
@@ -168,6 +169,7 @@ io.sockets.on("connection", function (socket) {
 
 		let roomUsers = "Room users: " + rooms.get(roomname)["room_users"].join(", ");
 		io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });
+		console.log("enter room room_users: " + rooms.get(roomname)["room_users"]);
 
 		io.sockets.to(roomname).emit(
 			"message_to_client", { message: `${username} has joined the chatroom.` }
@@ -185,9 +187,10 @@ io.sockets.on("connection", function (socket) {
 
 		socket.on('whisper_to_server', function (data) {
 			// This callback runs when the server receives a new message from the client.
-			let whisper = data["user"] + " sent a private message: " + data["whisper"];
+			let whisper = data["user"] + " sent a private message to " + data["target"] + ": " + data["whisper"];
 			console.log(whisper); // log it to the Node.JS output
-			io.sockets.to(users[data["target"]].id).emit("message_to_client", { message: whisper }) // wahwah not working
+			socket.emit("message_to_client", { message: whisper }); // wah added just now
+			io.sockets.to(users[data["target"]].id).emit("message_to_client", { message: whisper });
 		});
 
 
@@ -198,8 +201,14 @@ io.sockets.on("connection", function (socket) {
 
 			// delete user from rooms map
 			let usersArr = rooms.get(roomname)["room_users"];
+			console.log("before roomUsers: " + usersArr);
 			rooms.get(roomname)["room_users"] = usersArr.splice(usersArr.indexOf(username), 1);
+			rooms.set(roomname, {"room_users": usersArr, "password": rooms.get(roomname)["password"], "creator_socket": rooms.get(roomname)["creator_socket"] });
+
 			let roomUsers = "Room users: " + rooms.get(roomname)["room_users"].join(", ");
+
+			console.log("after roomUsers: " + rooms.get(roomname)["room_users"]);
+
 			io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });
 
 			io.sockets.to(roomname).emit(
