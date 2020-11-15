@@ -87,7 +87,7 @@ const socketio = require("socket.io")(server, {
 let usernames = []; // todo: don't need this, just use users.keys() instead
 let users = {}; // dictionary of (nickname, socket)
 let rooms = new Map(); // map of ["roomname", [username1, username2, ...]] 
-// let rooms = new Map(); // map of roomname to (array of users, password)
+// let rooms = new Map(); // map of roomname to (array of users, password, creatorSocket)
 // list of rooms can be accessed with io.sockets.adapter.rooms?
 
 // Attach our Socket.IO server to our HTTP server to listen
@@ -120,15 +120,15 @@ io.sockets.on("connection", function (socket) {
 	});
 
 	// wah
-	socket.on('new_room', function({ roomname: roomname }) {
+	socket.on('new_room', function({ roomname: roomname, password: password }) {
 		console.log(`inside socket new_room ${roomname}`);
 
 		if(rooms.has(roomname)) {
 			socket.emit("new_room_denied", { message : `Roomname "${roomname}" already exists.`, roomname: roomname} );
 		} else {
-			rooms.set(roomname, []);
+			rooms.set(roomname, { "room_users": [], "password": password, "creator_socket": socket });
 			io.sockets.emit("new_room_added", { message : `${roomname} has been created.`, roomname: roomname } );
-			io.sockets.emit("get_rooms", { rooms : Array.from(rooms.keys()) } );
+			io.sockets.emit("get_rooms", { rooms : Array.from(rooms.keys())/*, password_protected: password_protected, password: rooms.get(roomname)["password"] */} );
 			// socket.emit("new_room_added", { message : `${roomname} has been created.`, roomname: roomname } );
 			// socket.emit("get_rooms", { rooms : Array.from(rooms.keys()) } );
 		}
@@ -136,17 +136,39 @@ io.sockets.on("connection", function (socket) {
 	});
 	
 	// wah
+	socket.on("request_enter_room", function({ roomname : roomname, username: username }) {
+		// room password
+		console.log("pw: " + rooms.get(roomname)["password"]);
+		if(rooms.get(roomname)["password"] != "") {
+			// verify password
+			socket.emit("enter_password", {} );
+			socket.on("enter_password", function({ password_guess: password_guess }) {
+				if(password_guess.toString() == rooms.get(roomname)["password"]) {
+					// allow user to enter
+					console.log("inside password protected room");
+					socket.emit("password_check", { password_correct: true });
+				} else {
+					// emit message saying "Incorrect password."
+					console.log("incorrect password");
+					socket.emit("password_check", { password_correct: false });
+					// break out of function? how?
+					//return;
+				}
+			});
+		} else {
+			socket.emit("password_check", { password_correct: true });
+		}
+	})
 	socket.on('enter_room', function({ roomname : roomname, username: username }) {
-		rooms.get(roomname).push(username);
+
+		rooms.get(roomname)["room_users"].push(username);
 		console.log(`inside socket enter_room ${roomname}`);
-		// fs.readFile("room.html", function (err, data) {
-		// 	// data is the contents of the files			
-		// 	if (err) return res.writeHead(500);
-		// 	res.writeHead(200);
-		// 	res.end(data);
-		// });
 
 		socket.join(roomname);
+
+		let roomUsers = "Room users: " + rooms.get(roomname)["room_users"].join(", ");
+		io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });
+
 		io.sockets.to(roomname).emit(
 			"message_to_client", { message: `${username} has joined the chatroom.` }
 		);
@@ -165,30 +187,25 @@ io.sockets.on("connection", function (socket) {
 			// This callback runs when the server receives a new message from the client.
 			let whisper = data["user"] + " sent a private message: " + data["whisper"];
 			console.log(whisper); // log it to the Node.JS output
-			console.log("target socket: " + users[data["target"]]);
 			io.sockets.to(users[data["target"]].id).emit("message_to_client", { message: whisper }) // wahwah not working
 		});
+
+
 
 		// leave room
 		socket.on("leave_room", function (data) {
 			socket.leave(roomname);
+
+			// delete user from rooms map
+			let usersArr = rooms.get(roomname)["room_users"];
+			rooms.get(roomname)["room_users"] = usersArr.splice(usersArr.indexOf(username), 1);
+			let roomUsers = "Room users: " + rooms.get(roomname)["room_users"].join(", ");
+			io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });
+
 			io.sockets.to(roomname).emit(
 				"message_to_client", { message: `${username} has left the chatroom.` }
 			);
 		});
 	});
-
-	socket.on("get_room_users", function(data) {
-		let roomUsers = "Room users:";
-		// console.log("room users: " + rooms.get(data["roomname"]));
-		rooms.get(data["roomname"]).forEach(userInRoom => {
-			roomUsers = roomUsers + " " + userInRoom;
-		});
-		io.sockets.to(data["roomname"]).emit(
-			"get_room_users", { message: roomUsers }
-		);
-	});
-	// wah
-
     
 });

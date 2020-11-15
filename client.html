@@ -18,6 +18,8 @@
          <form id="room-form" action="client.js">
             <label for='room-name'>Room Name:</label>
             <input id='room-name' name='room-name' type='text' required>
+            <label for='password-input'>Password:</label>
+            <input id='password-input' name='password-input' type='password'>
             <input type='submit' value='Create'>
          </form>
          <div id="chatrooms-div"></div>
@@ -67,33 +69,63 @@
          socketio.emit("whisper_to_server", { whisper: whisper, user: user, target: whisperTarget});
       }
 
+      function getRooms(data) {
+         document.getElementById("chatrooms-div").innerHTML = "";
+               const rooms = data["rooms"];
+               const password = data["password"];
+               rooms.forEach(room => {
+                  let roomElement = document.createElement("hr");
+                  roomElement.appendChild(document.createTextNode(room + "\t"));
+                  roomElement.setAttribute("id", room);
+
+                  let joinButton = document.createElement("button");
+                  joinButton.textContent = "Join";
+                  roomElement.appendChild(joinButton);
+
+                  joinButton.addEventListener("click", function(event) {
+                     enterRoom(room, user);
+                  }, false);
+
+                  document.getElementById("chatrooms-div").appendChild(roomElement);
+               });
+      }
+
       // create chatroom form
       let roomForm = document.getElementById("room-form");
       roomForm.addEventListener("submit", function(event) {
          event.preventDefault();
          const roomName = document.getElementById("room-name").value;
+         const password_input = document.getElementById("password-input").value;
+         console.log("pw input: " + password_input);
          
          // document.getElementById("chatrooms-div").appendChild(document.createTextNode(roomName));
 
-         socketio.emit("new_room", {  roomname: roomName });
+         socketio.emit("new_room", {  roomname: roomName, password: password_input });
          socketio.on("new_room_added",function(data) {
             document.getElementById("room-alert").textContent = data['message'];
 
             document.getElementById("chatrooms-div").innerHTML = ""; // clear chatrooms-div?
             // show list of rooms available
             socketio.on("get_rooms",function(data) {
-               document.getElementById("chatrooms-div").innerHTML = ""; // clear chatrooms-div?
-                  // io.sockets.adapter.rooms
-               const rooms = data["rooms"];
-               rooms.forEach(room => {
-                  let roomElement = document.createElement("hr");
-                  roomElement.appendChild(document.createTextNode(room));
-                  roomElement.setAttribute("id", room);
-                  roomElement.addEventListener("click", function(event) {
-                     enterRoom(room, user);
-                  }, false);
-                  document.getElementById("chatrooms-div").appendChild(roomElement);
-               });
+               getRooms(data)
+               // document.getElementById("chatrooms-div").innerHTML = "";
+               // const rooms = data["rooms"];
+               // const password = data["password"];
+               // rooms.forEach(room => {
+               //    let roomElement = document.createElement("hr");
+               //    roomElement.appendChild(document.createTextNode(room + "\t"));
+               //    roomElement.setAttribute("id", room);
+
+               //    let joinButton = document.createElement("button");
+               //    joinButton.textContent = "Join";
+               //    roomElement.appendChild(joinButton);
+
+               //    joinButton.addEventListener("click", function(event) {
+               //       enterRoom(room, user);
+               //    }, false);
+
+               //    document.getElementById("chatrooms-div").appendChild(roomElement);
+               // });
             });
 
             // let roomElement = document.createElement("hr");
@@ -112,17 +144,38 @@
       }, false);
 
       function enterRoom(roomname, username) {
-         socketio.emit("enter_room", { roomname : roomname, username: username });
-         // get list of users
-         socketio.emit("get_room_users", { roomname: roomname });
-         socketio.on("get_room_users",function(data) {
-            document.getElementById("room-users").textContent = data["message"];
+         socketio.emit("request_enter_room", { roomname : roomname, username: username });
+
+         socketio.on("enter_password", function(data) {
+            console.log("client inside enter_password");
+            let password_guess = prompt("Please enter the room password:", "password");
+            socketio.emit("enter_password", { password_guess : password_guess });
+
+            // if (password_guess == null || password_guess == "") {
+            //    txt = "User cancelled the prompt.";
+            // } else {
+            //    txt = "Hello " + person + "! How are you today?";
+            // }
          });
 
-         document.getElementById("chatrooms").setAttribute("style", "display:none");
-         document.getElementById("room-div").setAttribute("style", "visibility:visible");
+         // get list of users
+         // socketio.emit("get_room_users", { roomname: roomname });
+         
 
-         document.getElementById("room-name-display").textContent = roomname;
+         socketio.on("password_check", function(data) {
+            if(data["password_correct"]) {
+               socketio.emit("enter_room", { roomname : roomname, username: username });
+               socketio.on("get_room_users",function(data) {
+                  document.getElementById("room-users").textContent = data["message"];
+               });
+               document.getElementById("chatrooms").setAttribute("style", "display:none");
+               document.getElementById("room-div").setAttribute("style", "visibility:visible");
+               document.getElementById("room-name-display").textContent = roomname;
+            } else {
+               alert("Incorrect password.");
+            }
+         });
+         
       }
 
       function leaveRoom() {
@@ -149,18 +202,19 @@
 
             // show list of rooms available
             socketio.on("get_rooms",function(data) {
-               document.getElementById("chatrooms-div").innerHTML = ""; // clear chatrooms-div?
-               // io.sockets.adapter.rooms
-               const rooms = data["rooms"];
-               rooms.forEach(room => {
-                  let roomElement = document.createElement("hr");
-                  roomElement.appendChild(document.createTextNode(room));
-                  roomElement.setAttribute("id", room);
-                  roomElement.addEventListener("click", function(event) {
-                     enterRoom(room, user);
-                  }, false);
-                  document.getElementById("chatrooms-div").appendChild(roomElement);
-               });
+               getRooms(data)
+               // document.getElementById("chatrooms-div").innerHTML = ""; // clear chatrooms-div?
+               // // io.sockets.adapter.rooms
+               // const rooms = data["rooms"];
+               // rooms.forEach(room => {
+               //    let roomElement = document.createElement("hr");
+               //    roomElement.appendChild(document.createTextNode(room));
+               //    roomElement.setAttribute("id", room);
+               //    roomElement.addEventListener("click", function(event) {
+               //       enterRoom(room, user);
+               //    }, false);
+               //    document.getElementById("chatrooms-div").appendChild(roomElement);
+               // });
             });
          });
 
