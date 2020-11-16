@@ -13,7 +13,7 @@
          <input type='submit' value='Submit'>
       </form><br>
 
-      <div id="chatrooms">
+      <div id="chatrooms" style="visibility:hidden">
          <p id="room-alert"></p>
          <form id="room-form" action="client.js">
             <label for='room-name'>Room Name:</label>
@@ -37,8 +37,19 @@
          <span> to </span>
          <input type="text" id="whisper_target" required>
          <button id="whisper-btn">whisper</button>
-         <div id="chatlog"></div>
+         <br>
 
+         <label for="kick_input">Kick </label>
+         <input type="text" id="kick_input" required>
+         <span> out of the chat.</span>
+         <button id="kick-btn">kick</button>
+         <br>
+
+         <label for="ban_input">Ban </label>
+         <input type="text" id="ban_input" required>
+         <span> from the room.</span>
+         <button id="ban-btn">ban</button>
+         <div id="chatlog"></div>
       </div>
 
       <script>
@@ -69,25 +80,39 @@
          socketio.emit("whisper_to_server", { whisper: whisper, user: user, target: whisperTarget});
       }
 
+      function kickUser() {
+         let kickTarget = document.getElementById("kick_input").value;
+
+         socketio.emit("kick", { target: kickTarget });
+      }
+
+      // !! getRooms sketchy, must be adding eventlistener to joinButton every time getRooms gets called, resulting in multiple eventlisteners to joinButton
       function getRooms(data) {
-         document.getElementById("chatrooms-div").innerHTML = "";
-               const rooms = data["rooms"];
-               const password = data["password"];
-               rooms.forEach(room => {
-                  let roomElement = document.createElement("hr");
-                  roomElement.appendChild(document.createTextNode(room + "\t"));
-                  roomElement.setAttribute("id", room);
+         // document.getElementById("chatrooms-div").childNodes.forEach(roomChild => {
+         //    roomChild.removeEventListener("click", enterRoom);
+         // });
+         while (document.getElementById("chatrooms-div").firstChild) {
+            document.getElementById("chatrooms-div").removeChild(document.getElementById("chatrooms-div").firstChild);
+         }
+         document.getElementById("chatrooms-div").innerHTML = ""; // sus; if I delete this line I get 2 duplicate rooms in the list
+         const rooms = data["rooms"];
+         const password = data["password"];
+         rooms.forEach(room => {
+            let roomElement = document.createElement("hr");
+            roomElement.appendChild(document.createTextNode(room + "\t"));
+            roomElement.setAttribute("id", room);
 
-                  let joinButton = document.createElement("button");
-                  joinButton.textContent = "Join";
-                  roomElement.appendChild(joinButton);
+            let joinButton = document.createElement("button");
+            joinButton.textContent = "Join";
+            roomElement.appendChild(joinButton);
 
-                  joinButton.addEventListener("click", function(event) {
-                     enterRoom(room, user);
-                  }, false);
+            joinButton.addEventListener("click", function(event) {
+               console.log("ENTERROOM");
+               enterRoom(room, user); // ENTERROOM gets called the correct number of times
+            }, false);
 
-                  document.getElementById("chatrooms-div").appendChild(roomElement);
-               });
+            document.getElementById("chatrooms-div").appendChild(roomElement);
+         });
       }
 
       // create chatroom form
@@ -106,27 +131,27 @@
 
             document.getElementById("chatrooms-div").innerHTML = ""; // clear chatrooms-div?
             // show list of rooms available
-            socketio.on("get_rooms",function(data) {
-               getRooms(data)
-               // document.getElementById("chatrooms-div").innerHTML = "";
-               // const rooms = data["rooms"];
-               // const password = data["password"];
-               // rooms.forEach(room => {
-               //    let roomElement = document.createElement("hr");
-               //    roomElement.appendChild(document.createTextNode(room + "\t"));
-               //    roomElement.setAttribute("id", room);
+            // socketio.on("get_rooms",function(data) {
+            //    getRooms(data)
+            //    // document.getElementById("chatrooms-div").innerHTML = "";
+            //    // const rooms = data["rooms"];
+            //    // const password = data["password"];
+            //    // rooms.forEach(room => {
+            //    //    let roomElement = document.createElement("hr");
+            //    //    roomElement.appendChild(document.createTextNode(room + "\t"));
+            //    //    roomElement.setAttribute("id", room);
 
-               //    let joinButton = document.createElement("button");
-               //    joinButton.textContent = "Join";
-               //    roomElement.appendChild(joinButton);
+            //    //    let joinButton = document.createElement("button");
+            //    //    joinButton.textContent = "Join";
+            //    //    roomElement.appendChild(joinButton);
 
-               //    joinButton.addEventListener("click", function(event) {
-               //       enterRoom(room, user);
-               //    }, false);
+            //    //    joinButton.addEventListener("click", function(event) {
+            //    //       enterRoom(room, user);
+            //    //    }, false);
 
-               //    document.getElementById("chatrooms-div").appendChild(roomElement);
-               // });
-            });
+            //    //    document.getElementById("chatrooms-div").appendChild(roomElement);
+            //    // });
+            // });
 
             // let roomElement = document.createElement("hr");
             // roomElement.appendChild(document.createTextNode(data['roomname']));
@@ -136,6 +161,11 @@
             // }, false);
             // document.getElementById("chatrooms-div").appendChild(roomElement);
             // document.getElementById("room-form").setAttribute("style", "display: none");
+         });
+
+         // moved get_rooms outside of new_room_added
+         socketio.on("get_rooms",function(data) {
+               getRooms(data)
          });
 
          socketio.on("new_room_denied",function(data) {
@@ -163,11 +193,13 @@
          
 
          socketio.on("password_check", function(data) {
+            console.log("PW CHECK");
             if(data["password_correct"]) {
                socketio.emit("enter_room", { roomname : roomname, username: username });
-               socketio.on("get_room_users",function(data) {
-                  document.getElementById("room-users").textContent = data["message"];
-               });
+               console.log("emitting enter_room"); // !! this prints twice
+               // socketio.on("get_room_users",function(data) {
+               //    document.getElementById("room-users").textContent = data["message"];
+               // });
                document.getElementById("chatrooms").setAttribute("style", "display:none");
                document.getElementById("room-div").setAttribute("style", "visibility:visible");
                document.getElementById("room-name-display").textContent = roomname;
@@ -175,11 +207,16 @@
                alert("Incorrect password.");
             }
          });
+
+         socketio.on("get_room_users",function(data) {
+                  document.getElementById("room-users").textContent = data["message"];
+         });
          
       }
 
       function leaveRoom() {
          socketio.emit("leave_room", { username: user });
+         // sus? should I do something here to prevent weird stuff
 
          // hide room-div
          document.getElementById("chatrooms").setAttribute("style", "display:unset");
@@ -199,6 +236,7 @@
             user = username;
             document.getElementById("alert").textContent = data['message'];
             document.getElementById("username-form").setAttribute("style", "display: none");
+            document.getElementById("chatrooms").setAttribute("style", "visibility:visible");
 
             // show list of rooms available
             socketio.on("get_rooms",function(data) {
@@ -225,6 +263,7 @@
 
       document.getElementById("send-btn").addEventListener("click", sendMessage, false);
       document.getElementById("whisper-btn").addEventListener("click", sendWhisper, false);
+      document.getElementById("kick-btn").addEventListener("click", kickUser, false);
       document.getElementById("leave-room-btn").addEventListener("click", leaveRoom, false);
       </script>
    </body>

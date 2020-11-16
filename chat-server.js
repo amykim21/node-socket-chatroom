@@ -1,63 +1,3 @@
-// // Require the packages we will use:
-// var http = require("http"),
-// 	// socketio = require("socket.io"),
-// 	fs = require("fs");
-
-// // citation: https://www.youtube.com/watch?v=jD7FnbI76Hg&t=2323s
-// const {
-// 	userJoin
-// 	} = require('./users.js');
-// // end of citation
-
-// const port = 3456;
-// const file = "client.html";
-// // Listen for HTTP connections.  This is essentially a miniature static file server that only serves our one file, client.html, on port 3456:
-// const server = http.createServer(function(req, resp){
-// 	// This callback runs when a new connection is made to our HTTP server.
-	
-// 	fs.readFile(file, function(err, data){
-// 		// This callback runs when the client.html file has been read from the filesystem.
-		
-// 		if(err) return resp.writeHead(500);
-// 		resp.writeHead(200);
-// 		resp.end(data);
-// 	});
-// });
-// server.listen(port);
-
-// // Import Socket.IO and pass our HTTP server object to it.
-// // const socketio = require("socket.io")(server);
-// const socketio = require("socket.io")(http, {wsEngine: 'ws'});
-
-// // Attach our Socket.IO server to our HTTP server to listen
-// const io = socketio.listen(server);
-// io.sockets.on("connection", function(socket){
-// 	// This callback runs when a new Socket.IO connection is established.
-// 	// citation: https://www.youtube.com/watch?v=jD7FnbI76Hg&t=2323s
-// 	// wah
-// 	// join a room
-// 	// socket.on("joinRoom", ({ username, room }) => {
-// 	// 	const user = userJoin(socket.id, username, room);
-// 	// 	socket.join(user.room);
-// 	// });
-
-// 	// // broadcast to a room
-// 	// socket.broadcast.to(user.room).emit(
-// 	// 	"message_to_client", { message: `${user.username} has joined the chat!` }
-// 	// );
-// 	// wah
-// 	// end of citation
-
-// 	socket.on('message_to_server', function(data) {
-// 		// This callback runs when the server receives a new message from the client.
-		
-// 		console.log("message: "+data["message"]); // log it to the Node.JS output
-// 		io.sockets.emit("message_to_client",{message:data["message"] }) // broadcast the message to other users
-// 	});
-// });
-
-
-// break
 // Require the packages we will use:
 const http = require("http"),
     fs = require("fs");
@@ -84,10 +24,11 @@ const socketio = require("socket.io")(server, {
 });
 
 // array storing usernames; use array.includes() to see if username already exists, array.push()
+let connectedSockets = []; // wahwahwah
 let usernames = []; // todo: don't need this, just use users.keys() instead
 let users = {}; // dictionary of (nickname, socket)
-let rooms = new Map(); // map of ["roomname", [username1, username2, ...]] 
-// let rooms = new Map(); // map of roomname to (array of users, password, creatorSocket)
+let rooms = new Map(); // map of roomname to (array of users, password, creatorSocket, bannedUsers)
+let profanities = ["fuck", "shit", "asshole", "whore", "bitch", "motherfucker"];
 // list of rooms can be accessed with io.sockets.adapter.rooms?
 
 // Attach our Socket.IO server to our HTTP server to listen
@@ -109,6 +50,9 @@ io.sockets.on("connection", function (socket) {
 			// console.log("roomusers: " + socket.roomUsers);
 			// console.log("rooms: " + socket.rooms);
 			socket.username = username;
+			connectedSockets.push(socket); // wahwahwah
+
+
 			users[username] = socket;
 			console.log("username: " + socket.username); // wahwah
 
@@ -157,17 +101,28 @@ io.sockets.on("connection", function (socket) {
 				}
 			});
 		} else {
+			console.log("WAH");
 			socket.emit("password_check", { password_correct: true });
 		}
-	})
+	});
 	socket.on('enter_room', function({ roomname : roomname, username: username }) {
 
 		rooms.get(roomname)["room_users"].push(username);
+		socket.room = roomname; // wahwahwah
 		console.log(`inside socket enter_room ${roomname}`);
 
 		socket.join(roomname);
 
 		let roomUsers = "Room users: " + rooms.get(roomname)["room_users"].join(", ");
+		// wahwahwah
+		// let roomUsers = "Room users: ";
+		// connectedSockets.forEach(socket => {
+		// 	if(socket.room == roomname) {
+		// 		roomUsers = roomUsers + ", " + socket.username;
+		// 	}
+		// });
+		// wahwahwah
+
 		io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });
 		console.log("enter room room_users: " + rooms.get(roomname)["room_users"]);
 
@@ -182,6 +137,10 @@ io.sockets.on("connection", function (socket) {
 			console.log("message: " + data["message"]); // log it to the Node.JS output
 			// io.to(roomname).emit(data["message"]); // wah
 			let message = data["user"] + ": " + data["message"];
+			// creative portion: replace swear words with *
+			profanities.forEach(word => {
+				message = message.replace(word, "*".repeat(word.length));
+			});
 			io.sockets.to(roomname).emit("message_to_client", { message: message }) // broadcast the message to other users
 		});
 
@@ -193,11 +152,47 @@ io.sockets.on("connection", function (socket) {
 			io.sockets.to(users[data["target"]].id).emit("message_to_client", { message: whisper });
 		});
 
+		socket.on("kick", function(data) {
+			if(socket.username == rooms.get(roomname)["creator_socket"].username) {
+				connectedSockets.forEach(s => {
+					if(s.username = data["target"]) {
+						s.leave(roomname);
+						s.emit("you_are_kicked", {}); 
+						// todo: remove data["target"] from rooms map
+						console.log("socket.username: " + socket.username);
+						let message = data["target"] + " has been kicked by " + socket.username;
+						io.sockets.to(roomname).emit("message_to_client", { message: message })
+					}
+				});
+			}
+		});
+
+		socket.on("ban", function(data) {
+			if(socket.username == rooms.get(roomname)["creator_socket"].username) {
+				connectedSockets.forEach(s => {
+					if(s.username = data["target"]) {
+						s.leave(roomname);
+						s.emit("you_are_banned", {}); 
+						// todo: remove data["target"] from rooms map
+						// todo: add data["target"] to list of banned users
+						console.log("socket.username: " + socket.username);
+						let message = data["target"] + " has been banned by " + socket.username;
+						io.sockets.to(roomname).emit("message_to_client", { message: message })
+					}
+				});
+			}
+		});
+
 
 
 		// leave room
 		socket.on("leave_room", function (data) {
+			// socket.removeAllListeners('enter_room'); // sus
+			// socket.removeListener("enter_room");
+			// getEventListeners(socket)['enter_room'][0].remove();
 			socket.leave(roomname);
+			socket.room = ""; // wahwahwah
+			console.log("sockets: " + connectedSockets);
 
 			// delete user from rooms map
 			let usersArr = rooms.get(roomname)["room_users"];
@@ -216,5 +211,32 @@ io.sockets.on("connection", function (socket) {
 			);
 		});
 	});
+
+
+
+			// leave room
+			// socket.on("leave_room", function (data) {
+			// 	let roomname = "a";
+			// 	let username = "q";
+			// 	socket.leave(roomname);
+			// 	socket.room = ""; // wahwahwah
+			// 	console.log("sockets: " + connectedSockets);
+	
+			// 	// delete user from rooms map
+			// 	let usersArr = rooms.get(roomname)["room_users"];
+			// 	console.log("before roomUsers: " + usersArr);
+			// 	rooms.get(roomname)["room_users"] = usersArr.splice(usersArr.indexOf(username), 1);
+			// 	rooms.set(roomname, {"room_users": usersArr, "password": rooms.get(roomname)["password"], "creator_socket": rooms.get(roomname)["creator_socket"] });
+	
+			// 	let roomUsers = "Room users: " + rooms.get(roomname)["room_users"].join(", ");
+	
+			// 	console.log("after roomUsers: " + rooms.get(roomname)["room_users"]);
+	
+			// 	io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });
+	
+			// 	io.sockets.to(roomname).emit(
+			// 		"message_to_client", { message: `${username} has left the chatroom.` }
+			// 	);
+			// });
     
 });
