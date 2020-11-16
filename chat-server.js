@@ -130,20 +130,20 @@ io.sockets.on("connection", function (socket) {
 	});
 
 	// moved to outside
-	socket.on("enter_password", function({ password_guess: password_guess, roomname: roomname }) {
+	socket.on("enter_protected_room", function({ password_guess: password_guess, roomname: roomname }) {
 		// if(password_guess.toString() == rooms.get(roomname)["password"]) {
 		let pw;
 		rooms.forEach(room => {
 			if(room.roomname == roomname) pw = room.password;
 		});
-		if(password_guess.toString() == pw) {
+		if(password_guess.toString() != null && password_guess.toString() == pw) {
 			// allow user to enter
 			console.log("inside password protected room");
-			socket.emit("password_check", { password_correct: true });
+			socket.emit("password_check", { password_correct: true, roomname: roomname });
 		} else {
 			// emit message saying "Incorrect password."
 			console.log("incorrect password");
-			socket.emit("password_check", { password_correct: false });
+			socket.emit("password_check", { password_correct: false, roomname: roomname });
 			// break out of function? how?
 			//return;
 		}
