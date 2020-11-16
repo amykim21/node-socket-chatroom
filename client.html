@@ -55,6 +55,8 @@
       <script>
       var socketio = io.connect();
       let user = "";
+      let rooms = []; // {roomname, hasPassword}
+
       socketio.on("message_to_client",function(data) {
          //Append an HR thematic break and the escaped HTML of the new message
          document.getElementById("chatlog").appendChild(document.createElement("hr"));
@@ -86,100 +88,149 @@
          socketio.emit("kick", { target: kickTarget });
       }
 
+      // function getRooms() {
+      //    // socketio.emit("get_rooms", {});
+      //    socketio.on("get_rooms",function(data) {
+      //       rooms = data.rooms;
+      //       console.log("ROOMS: " + rooms);
+
+      //       document.getElementById("chatrooms-div").innerHTML = ""; // sus; if I delete this line I get 2 duplicate rooms in the list
+      //       rooms.forEach(room => {
+      //          let roomElement = document.createElement("hr");
+      //          roomElement.appendChild(document.createTextNode(room.roomname + "\t"));
+      //          roomElement.setAttribute("id", room.roomname);
+
+      //          let joinButton = document.createElement("button");
+      //          joinButton.setAttribute("id", room.roomname+"-btn");
+      //          joinButton.textContent = "Join";
+      //          joinButton.addEventListener("click", function(event) {
+      //             console.log("ENTERROOM");
+      //             enterRoom(room.roomname, user); // ENTERROOM gets called the correct number of times
+      //          }, false);
+      //          roomElement.appendChild(joinButton);
+
+      //          document.getElementById("chatrooms-div").appendChild(roomElement);
+      //       });
+      //    });
+      // }
+
       // !! getRooms sketchy, must be adding eventlistener to joinButton every time getRooms gets called, resulting in multiple eventlisteners to joinButton
-      function getRooms(data) {
-         // document.getElementById("chatrooms-div").childNodes.forEach(roomChild => {
-         //    roomChild.removeEventListener("click", enterRoom);
-         // });
-         while (document.getElementById("chatrooms-div").firstChild) {
-            document.getElementById("chatrooms-div").removeChild(document.getElementById("chatrooms-div").firstChild);
-         }
-         document.getElementById("chatrooms-div").innerHTML = ""; // sus; if I delete this line I get 2 duplicate rooms in the list
-         const rooms = data["rooms"];
-         const password = data["password"];
-         rooms.forEach(room => {
-            let roomElement = document.createElement("hr");
-            roomElement.appendChild(document.createTextNode(room + "\t"));
-            roomElement.setAttribute("id", room);
+      // function getRooms(data) {
+      //    // document.getElementById("chatrooms-div").childNodes.forEach(roomChild => {
+      //    //    roomChild.removeEventListener("click", enterRoom);
+      //    // });
+      //    while (document.getElementById("chatrooms-div").firstChild) {
+      //       document.getElementById("chatrooms-div").removeChild(document.getElementById("chatrooms-div").firstChild);
+      //    }
+      //    document.getElementById("chatrooms-div").innerHTML = ""; // sus; if I delete this line I get 2 duplicate rooms in the list
+      //    rooms = data["rooms"];
+      //    console.log("ROOMS OBJECT FROM SERVER: " + data["rooms"]);
+      //    const password = data["password"];
+      //    rooms.forEach(room => {
+      //       let roomElement = document.createElement("hr");
+      //       roomElement.appendChild(document.createTextNode(room + "\t"));
+      //       roomElement.setAttribute("id", room);
 
-            let joinButton = document.createElement("button");
-            joinButton.textContent = "Join";
-            roomElement.appendChild(joinButton);
+      //       let joinButton = document.createElement("button");
+      //       joinButton.setAttribute("id", room+"-btn");
+      //       joinButton.textContent = "Join";
+      //       roomElement.appendChild(joinButton);
 
-            joinButton.addEventListener("click", function(event) {
-               console.log("ENTERROOM");
-               enterRoom(room, user); // ENTERROOM gets called the correct number of times
-            }, false);
+      //       joinButton.addEventListener("click", function(event) {
+      //          console.log("ENTERROOM");
+      //          enterRoom(room, user); // ENTERROOM gets called the correct number of times
+      //       }, false);
 
-            document.getElementById("chatrooms-div").appendChild(roomElement);
-         });
-      }
+      //       document.getElementById("chatrooms-div").appendChild(roomElement);
+      //    });
+         
+      //    // const rooms = data["rooms"];
+      //    // const password = data["password"];
+      //    // rooms.forEach(room => {
+      //    //    let roomElement = document.createElement("hr");
+      //    //    roomElement.appendChild(document.createTextNode(room + "\t"));
+      //    //    roomElement.setAttribute("id", room);
+
+      //    //    let joinButton = document.createElement("button");
+      //    //    joinButton.setAttribute("id", room+"-btn");
+      //    //    joinButton.textContent = "Join";
+      //    //    roomElement.appendChild(joinButton);
+
+      //    //    joinButton.addEventListener("click", function(event) {
+      //    //       console.log("ENTERROOM");
+      //    //       enterRoom(room, user); // ENTERROOM gets called the correct number of times
+      //    //    }, false);
+
+      //    //    document.getElementById("chatrooms-div").appendChild(roomElement);
+      //    // });
+      // }
 
       // create chatroom form
       let roomForm = document.getElementById("room-form");
       roomForm.addEventListener("submit", function(event) {
          event.preventDefault();
+         addRoom();
+      }, false);
+
+      function addUser() {
+         const username = document.getElementById("username").value;
+         socketio.emit("new_user", {  username: username });
+         socketio.on("new_user_added",function(data) {
+            user = username;
+            document.getElementById("alert").textContent = data['message'];
+            document.getElementById("username-form").setAttribute("style", "display: none");
+            document.getElementById("chatrooms").setAttribute("style", "visibility:visible");
+
+
+         });
+
+         socketio.on("new_user_denied",function(data) {
+            document.getElementById("alert").textContent = data['message'];
+         });
+
+         // getRooms();
+         // show list of rooms available
+         // socketio.on("get_rooms",function(data) {
+         //       getRooms(data);
+         //       // document.getElementById("chatrooms-div").innerHTML = ""; // clear chatrooms-div?
+         //       // // io.sockets.adapter.rooms
+         //       // const rooms = data["rooms"];
+         //       // rooms.forEach(room => {
+         //       //    let roomElement = document.createElement("hr");
+         //       //    roomElement.appendChild(document.createTextNode(room));
+         //       //    roomElement.setAttribute("id", room);
+         //       //    roomElement.addEventListener("click", function(event) {
+         //       //       enterRoom(room, user);
+         //       //    }, false);
+         //       //    document.getElementById("chatrooms-div").appendChild(roomElement);
+         //       // });
+         //    });
+      }
+
+      function addRoom() {
          const roomName = document.getElementById("room-name").value;
          const password_input = document.getElementById("password-input").value;
-         console.log("pw input: " + password_input);
-         
-         // document.getElementById("chatrooms-div").appendChild(document.createTextNode(roomName));
 
          socketio.emit("new_room", {  roomname: roomName, password: password_input });
          socketio.on("new_room_added",function(data) {
+            const hasPassword = (password_input != "");
+            rooms.push({roomname: roomName, hasPassword: hasPassword });
             document.getElementById("room-alert").textContent = data['message'];
-
-            document.getElementById("chatrooms-div").innerHTML = ""; // clear chatrooms-div?
-            // show list of rooms available
-            // socketio.on("get_rooms",function(data) {
-            //    getRooms(data)
-            //    // document.getElementById("chatrooms-div").innerHTML = "";
-            //    // const rooms = data["rooms"];
-            //    // const password = data["password"];
-            //    // rooms.forEach(room => {
-            //    //    let roomElement = document.createElement("hr");
-            //    //    roomElement.appendChild(document.createTextNode(room + "\t"));
-            //    //    roomElement.setAttribute("id", room);
-
-            //    //    let joinButton = document.createElement("button");
-            //    //    joinButton.textContent = "Join";
-            //    //    roomElement.appendChild(joinButton);
-
-            //    //    joinButton.addEventListener("click", function(event) {
-            //    //       enterRoom(room, user);
-            //    //    }, false);
-
-            //    //    document.getElementById("chatrooms-div").appendChild(roomElement);
-            //    // });
-            // });
-
-            // let roomElement = document.createElement("hr");
-            // roomElement.appendChild(document.createTextNode(data['roomname']));
-            // roomElement.setAttribute("id", data['roomname']);
-            // roomElement.addEventListener("click", function(event) {
-            //    enterRoom(data['roomname'], user);
-            // }, false);
-            // document.getElementById("chatrooms-div").appendChild(roomElement);
-            // document.getElementById("room-form").setAttribute("style", "display: none");
          });
-
-         // moved get_rooms outside of new_room_added
-         socketio.on("get_rooms",function(data) {
-               getRooms(data)
-         });
+         // getRooms();
 
          socketio.on("new_room_denied",function(data) {
             document.getElementById("room-alert").textContent = data['message'];
          });
-      }, false);
+      }
 
-      function enterRoom(roomname, username) {
-         socketio.emit("request_enter_room", { roomname : roomname, username: username });
+      function enterRoom(roomname, hasPassword, username) {
+         socketio.emit("request_enter_room", { roomname : roomname, hasPassword: hasPassword, username: username });
 
          socketio.on("enter_password", function(data) {
             console.log("client inside enter_password");
             let password_guess = prompt("Please enter the room password:", "password");
-            socketio.emit("enter_password", { password_guess : password_guess });
+            socketio.emit("enter_password", { password_guess : password_guess, roomname: roomname });
 
             // if (password_guess == null || password_guess == "") {
             //    txt = "User cancelled the prompt.";
@@ -224,41 +275,34 @@
          // show starting page
       }
 
+      socketio.on("get_rooms",function(data) {
+            rooms = data.rooms;
+            console.log("ROOMS: " + rooms);
+            
+            document.getElementById("chatrooms-div").innerHTML = ""; // sus; if I delete this line I get 2 duplicate rooms in the list
+            rooms.forEach(room => {
+               let roomElement = document.createElement("hr");
+               roomElement.appendChild(document.createTextNode(room.roomname + "\t"));
+               roomElement.setAttribute("id", room.roomname);
+
+               let joinButton = document.createElement("button");
+               joinButton.setAttribute("id", room.roomname+"-btn");
+               joinButton.textContent = "Join";
+               joinButton.addEventListener("click", function(event) {
+                  console.log("ENTERROOM");
+                  enterRoom(room.roomname, room.hasPassword, user); // ENTERROOM gets called the correct number of times
+               }, false);
+               roomElement.appendChild(joinButton);
+
+               document.getElementById("chatrooms-div").appendChild(roomElement);
+            });
+      });
+
       // username form
       const startForm = document.getElementById("username-form");
       startForm.addEventListener("submit", function(event) {
          event.preventDefault();
-         const username = document.getElementById("username").value;
-         socketio.emit("new_user", {  username: username });
-         console.log("username submitted: " + username);
-
-         socketio.on("new_user_added",function(data) {
-            user = username;
-            document.getElementById("alert").textContent = data['message'];
-            document.getElementById("username-form").setAttribute("style", "display: none");
-            document.getElementById("chatrooms").setAttribute("style", "visibility:visible");
-
-            // show list of rooms available
-            socketio.on("get_rooms",function(data) {
-               getRooms(data)
-               // document.getElementById("chatrooms-div").innerHTML = ""; // clear chatrooms-div?
-               // // io.sockets.adapter.rooms
-               // const rooms = data["rooms"];
-               // rooms.forEach(room => {
-               //    let roomElement = document.createElement("hr");
-               //    roomElement.appendChild(document.createTextNode(room));
-               //    roomElement.setAttribute("id", room);
-               //    roomElement.addEventListener("click", function(event) {
-               //       enterRoom(room, user);
-               //    }, false);
-               //    document.getElementById("chatrooms-div").appendChild(roomElement);
-               // });
-            });
-         });
-
-         socketio.on("new_user_denied",function(data) {
-            document.getElementById("alert").textContent = data['message'];
-         });
+         addUser();
       }, false);
 
       document.getElementById("send-btn").addEventListener("click", sendMessage, false);

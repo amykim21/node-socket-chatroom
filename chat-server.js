@@ -27,7 +27,7 @@ const socketio = require("socket.io")(server, {
 let connectedSockets = []; // wahwahwah
 let usernames = []; // todo: don't need this, just use users.keys() instead
 let users = {}; // dictionary of (nickname, socket)
-let rooms = new Map(); // map of roomname to (array of users, password, creatorSocket, bannedUsers)
+let rooms = []; // array of room objects (roomname, array of users, password, creatorSocket, bannedUsers)
 let profanities = ["fuck", "shit", "asshole", "whore", "bitch", "motherfucker"];
 // list of rooms can be accessed with io.sockets.adapter.rooms?
 
@@ -57,7 +57,12 @@ io.sockets.on("connection", function (socket) {
 			console.log("username: " + socket.username); // wahwah
 
 
-			socket.emit("get_rooms", { rooms : Array.from(rooms.keys()) } );
+			const sentRooms = [];
+			rooms.forEach(room => {
+				sentRooms.push({ roomname: room.roomname, room_users: room.room_users, hasPassword: (room.password != "") });
+			});
+			socket.emit("get_rooms", { rooms : sentRooms } );
+			// socket.emit("get_rooms", { rooms : Array.from(rooms.keys()) } );
 		}
 
 	});
@@ -68,52 +73,98 @@ io.sockets.on("connection", function (socket) {
 		// console.log("io.sockets.adapter.rooms.get: " + io.sockets.adapter.rooms[roomname]);
 		// console.log("nsps: " + io.nsps[yourNamespace].adapter.rooms[roomname]);
 
-		if(rooms.has(roomname)) {
+		let duplicateRoomname = rooms.some(room => (room.roomname == roomname));
+		// if(rooms.has(roomname)) {
+		if(duplicateRoomname) {
 			socket.emit("new_room_denied", { message : `Roomname "${roomname}" already exists.`, roomname: roomname} );
 		} else {
-			rooms.set(roomname, { "room_users": [], "password": password, "creator_socket": socket });
+			rooms.push({roomname: roomname, room_users: [], password: password, creator_socket: socket, banned_users: [] });
+			console.log("new_room rooms: " + rooms.toString());
+			// rooms.set(roomname, { "room_users": [], "password": password, "creator_socket": socket });
 			io.sockets.emit("new_room_added", { message : `${roomname} has been created.`, roomname: roomname } );
-			io.sockets.emit("get_rooms", { rooms : Array.from(rooms.keys())/*, password_protected: password_protected, password: rooms.get(roomname)["password"] */} );
+
+			const sentRooms = [];
+			rooms.forEach(room => {
+				sentRooms.push({ roomname: room.roomname, room_users: room.room_users, hasPassword: (room.password != "") });
+			});
+			socket.emit("get_rooms", { rooms : sentRooms } );
+			// io.sockets.emit("get_rooms", { rooms : Array.from(rooms.keys())/*, password_protected: password_protected, password: rooms.get(roomname)["password"] */} );
 			// socket.emit("new_room_added", { message : `${roomname} has been created.`, roomname: roomname } );
 			// socket.emit("get_rooms", { rooms : Array.from(rooms.keys()) } );
 		}
 
 	});
+
+	// socket.on("get_rooms", function(data) {
+	// 	const sentRooms = [];
+	// 	rooms.forEach(room => {
+	// 		sentRooms.push({ roomname: room.roomname, room_users: room.room_users, hasPassword: (room.password != "") });
+	// 	});
+	// 	socket.emit("get_rooms", { rooms : sentRooms } );
+	// });
 	
 	// wah
-	socket.on("request_enter_room", function({ roomname : roomname, username: username }) {
+	socket.on("request_enter_room", function({ roomname : roomname, hasPassword: hasPassword, username: username }) {
 		// room password
-		console.log("pw: " + rooms.get(roomname)["password"]);
-		if(rooms.get(roomname)["password"] != "") {
+		// if(rooms.get(roomname)["password"] != "") {
+		if(hasPassword) {
 			// verify password
 			socket.emit("enter_password", {} );
-			socket.on("enter_password", function({ password_guess: password_guess }) {
-				if(password_guess.toString() == rooms.get(roomname)["password"]) {
-					// allow user to enter
-					console.log("inside password protected room");
-					socket.emit("password_check", { password_correct: true });
-				} else {
-					// emit message saying "Incorrect password."
-					console.log("incorrect password");
-					socket.emit("password_check", { password_correct: false });
-					// break out of function? how?
-					//return;
-				}
-			});
+			// socket.on("enter_password", function({ password_guess: password_guess }) {
+			// 	if(password_guess.toString() == rooms.get(roomname)["password"]) {
+			// 		// allow user to enter
+			// 		console.log("inside password protected room");
+			// 		socket.emit("password_check", { password_correct: true });
+			// 	} else {
+			// 		// emit message saying "Incorrect password."
+			// 		console.log("incorrect password");
+			// 		socket.emit("password_check", { password_correct: false });
+			// 		// break out of function? how?
+			// 		//return;
+			// 	}
+			// });
 		} else {
 			console.log("WAH");
 			socket.emit("password_check", { password_correct: true });
 		}
 	});
-	socket.on('enter_room', function({ roomname : roomname, username: username }) {
 
-		rooms.get(roomname)["room_users"].push(username);
+	// moved to outside
+	socket.on("enter_password", function({ password_guess: password_guess, roomname: roomname }) {
+		// if(password_guess.toString() == rooms.get(roomname)["password"]) {
+		let pw;
+		rooms.forEach(room => {
+			if(room.roomname == roomname) pw = room.password;
+		});
+		if(password_guess.toString() == pw) {
+			// allow user to enter
+			console.log("inside password protected room");
+			socket.emit("password_check", { password_correct: true });
+		} else {
+			// emit message saying "Incorrect password."
+			console.log("incorrect password");
+			socket.emit("password_check", { password_correct: false });
+			// break out of function? how?
+			//return;
+		}
+	});
+
+	socket.on('enter_room', function({ roomname : roomname, username: username }) {
+		console.log("ENTER");
+		// rooms.get(roomname)["room_users"].push(username);
+		let room;
+		rooms.forEach(r => {
+			if(r.roomname == roomname) {
+				r.room_users = r.room_users.push(username);
+				room = r;
+			}
+		});
 		socket.room = roomname; // wahwahwah
 		console.log(`inside socket enter_room ${roomname}`);
 
 		socket.join(roomname);
 
-		let roomUsers = "Room users: " + rooms.get(roomname)["room_users"].join(", ");
+		let roomUsers = "Room users: " + room.room_users.join(", ");
 		// wahwahwah
 		// let roomUsers = "Room users: ";
 		// connectedSockets.forEach(socket => {
@@ -124,7 +175,6 @@ io.sockets.on("connection", function (socket) {
 		// wahwahwah
 
 		io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });
-		console.log("enter room room_users: " + rooms.get(roomname)["room_users"]);
 
 		io.sockets.to(roomname).emit(
 			"message_to_client", { message: `${username} has joined the chatroom.` }
@@ -203,6 +253,7 @@ io.sockets.on("connection", function (socket) {
 			let roomUsers = "Room users: " + rooms.get(roomname)["room_users"].join(", ");
 
 			console.log("after roomUsers: " + rooms.get(roomname)["room_users"]);
+			console.log("roomUsers: " + roomUsers);
 
 			io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });
 
