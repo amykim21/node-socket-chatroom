@@ -155,7 +155,7 @@ io.sockets.on("connection", function (socket) {
 		let room;
 		rooms.forEach(r => {
 			if(r.roomname == roomname) {
-				r.room_users = r.room_users.push(username);
+				r.room_users.push(username);
 				room = r;
 			}
 		});
@@ -164,6 +164,7 @@ io.sockets.on("connection", function (socket) {
 
 		socket.join(roomname);
 
+		console.log("room.room_users: " + room.room_users);
 		let roomUsers = "Room users: " + room.room_users.join(", ");
 		// wahwahwah
 		// let roomUsers = "Room users: ";
