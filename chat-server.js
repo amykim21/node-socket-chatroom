@@ -246,15 +246,22 @@ io.sockets.on("connection", function (socket) {
 			console.log("sockets: " + connectedSockets);
 
 			// delete user from rooms map
-			let usersArr = rooms.get(roomname)["room_users"];
+			let room;
+			for(r of rooms) {
+				if(r.roomname == roomname) {
+					room = r;
+				}
+			}
+			let usersArr = r.room_users;
 			console.log("before roomUsers: " + usersArr);
-			rooms.get(roomname)["room_users"] = usersArr.splice(usersArr.indexOf(username), 1);
-			rooms.set(roomname, {"room_users": usersArr, "password": rooms.get(roomname)["password"], "creator_socket": rooms.get(roomname)["creator_socket"] });
-
-			let roomUsers = "Room users: " + rooms.get(roomname)["room_users"].join(", ");
-
-			console.log("after roomUsers: " + rooms.get(roomname)["room_users"]);
-			console.log("roomUsers: " + roomUsers);
+			const index = usersArr.indexOf(username);
+			if(index > -1) {
+				usersArr.splice(index, 1);
+			}
+			room.room_users = usersArr;
+			// rooms.set(roomname, {"room_users": usersArr, "password": rooms.get(roomname)["password"], "creator_socket": rooms.get(roomname)["creator_socket"] });
+			let roomUsers = "Room users: " + room.room_users.join(", ");
+			console.log("after roomUsers: " + room.room_users.toString());
 
 			io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });
 
