@@ -240,7 +240,7 @@ io.sockets.on("connection", function (socket) {
 				room = r;
 			}
 		}
-		if(socket.username == r.creator_socket.username) {
+		if(socket.username == room.creator_socket.username) {
 			console.log("you are the creator");
 			connectedSockets.forEach(s => {
 				console.log("connected s: " + s.username);
