@@ -163,7 +163,7 @@ io.sockets.on("connection", function (socket) {
 
 		socket.join(roomname);
 
-		console.log("room.room_users: " + room.room_users);
+		console.log("room.room_users: " + room.room_users); // !! if kicked multiple times, console logs "room.room_users: w,w,w"
 		let roomUsers = "Room users: " + room.room_users.join(", ");
 		io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });
 
@@ -193,42 +193,42 @@ io.sockets.on("connection", function (socket) {
 			io.sockets.to(users[data["target"]].id).emit("message_to_client", { message: whisper });
 		});
 
-		socket.on("kick", function(data) {
-			console.log("inside kick");
-			let roomname = data.roomname;
-			let room;
-			for(r of rooms) {
-				if (r.roomname == roomname) {
-					room = r;
-				}
-			}
-			if(socket.username == r.creator_socket.username) {
-				console.log("you are the creator");
-				connectedSockets.forEach(s => {
-					console.log("connected s: " + s.username);
-					if(s.username == data.target) {
-						s.leave(roomname);
-						s.emit("you_are_kicked", {});
-						console.log("s.username: " + s.username);
+		// socket.on("kick", function(data) {
+		// 	console.log("inside kick");
+		// 	let roomname = data.roomname;
+		// 	let room;
+		// 	for(r of rooms) {
+		// 		if (r.roomname == roomname) {
+		// 			room = r;
+		// 		}
+		// 	}
+		// 	if(socket.username == r.creator_socket.username) {
+		// 		console.log("you are the creator");
+		// 		connectedSockets.forEach(s => {
+		// 			console.log("connected s: " + s.username);
+		// 			if(s.username == data.target) {
+		// 				s.leave(roomname);
+		// 				s.emit("you_are_kicked", {});
+		// 				console.log("s.username: " + s.username);
 
-						// remove data.target from rooms map
-						let usersArr = r.room_users;
-						const index = usersArr.indexOf(data.username);
-						if(index > -1) {
-							usersArr.splice(index, 1);
-						}
-						room.room_users = usersArr;
-						// let message = data.target + " has been kicked by " + socket.username;
-						let message = data.target + " has been kicked by " + data.username;
-						io.sockets.to(roomname).emit("message_to_client", { message: message })
-						console.log("kick msg: " + message); // ?? says kick msg: e has been kicked by e; target correct, but socket.username weird
-						// ?? message shows up in e (kicked person)'s chatlog
-						// update room users
-						let roomUsers = "Room users: " + room.room_users.join(", ");
-						io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });					}
-				});
-			}
-		});
+		// 				// remove data.target from rooms map
+		// 				let usersArr = r.room_users;
+		// 				const index = usersArr.indexOf(data.username);
+		// 				if(index > -1) {
+		// 					usersArr.splice(index, 1);
+		// 				}
+		// 				room.room_users = usersArr;
+		// 				// let message = data.target + " has been kicked by " + socket.username;
+		// 				let message = data.target + " has been kicked by " + data.username;
+		// 				io.sockets.to(roomname).emit("message_to_client", { message: message })
+		// 				console.log("kick msg: " + message); // ?? says kick msg: e has been kicked by e; target correct, but socket.username weird
+		// 				// ?? message shows up in e (kicked person)'s chatlog
+		// 				// update room users
+		// 				let roomUsers = "Room users: " + room.room_users.join(", ");
+		// 				io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });					}
+		// 		});
+		// 	}
+		// });
 
 		socket.on("ban", function(data) {
 			if(socket.username == rooms.get(roomname)["creator_socket"].username) {
@@ -245,49 +245,45 @@ io.sockets.on("connection", function (socket) {
 				});
 			}
 		});
+	});
 
+	// kick user moved to outside
+	socket.on("kick", function(data) {
+		console.log("inside kick");
+		let roomname = data.roomname;
+		let room;
+		for(r of rooms) {
+			if (r.roomname == roomname) {
+				room = r;
+			}
+		}
+		if(socket.username == r.creator_socket.username) {
+			console.log("you are the creator");
+			connectedSockets.forEach(s => {
+				console.log("connected s: " + s.username);
+				if(s.username == data.target) {
+					s.leave(roomname);
+					s.emit("you_are_kicked", {});
+					console.log("s.username: " + s.username);
 
-
-		// // leave room
-		// socket.on("leave_room", function (data) {
-		// 	// socket.removeAllListeners('enter_room'); // sus
-		// 	// socket.removeListener("enter_room");
-		// 	// getEventListeners(socket)['enter_room'][0].remove();
-		// 	socket.leave(roomname);
-		// 	socket.room = ""; // wahwahwah
-		// 	console.log("sockets: " + connectedSockets);
-
-		// 	// delete user from rooms map
-		// 	let leavingUser = data.username;
-		// 	let room;
-		// 	for(r of rooms) {
-		// 		if(r.roomname == roomname) {
-		// 			room = r;
-		// 		}
-		// 	}
-		// 	let usersArr = r.room_users;
-		// 	console.log("before roomUsers: " + usersArr);
-		// 	const index = usersArr.indexOf(leavingUser);
-		// 	if(index > -1) {
-		// 		usersArr.splice(index, 1);
-		// 	}
-		// 	room.room_users = usersArr;
-		// 	let roomUsers = "Room users: " + room.room_users.join(", ");
-		// 	console.log("after roomUsers: " + room.room_users.toString());
-
-		// 	io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });
-
-		// 	io.sockets.to(roomname).emit(
-		// 		"message_to_client", { message: `${leavingUser} has left the chatroom.` }
-		// 	);
-		// });
+					// remove data.target from rooms map
+					let usersArr = r.room_users;
+					const index = usersArr.indexOf(data.target);
+					if(index > -1) {
+						usersArr.splice(index, 1);
+					}
+					room.room_users = usersArr;
+					let message = data.target + " has been kicked by " + data.username;
+					io.sockets.to(roomname).emit("message_to_client", { message: message })
+					// update room users
+					let roomUsers = "Room users: " + room.room_users.join(", ");
+					io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });					}
+			});
+		}
 	});
 
 			// leave room moved to outside
 			socket.on("leave_room", function (data) {
-				// socket.removeAllListeners('enter_room'); // sus
-				// socket.removeListener("enter_room");
-				// getEventListeners(socket)['enter_room'][0].remove();
 				const roomname = data.roomname;
 				const leavingUser = data.username;
 				socket.leave(roomname);
