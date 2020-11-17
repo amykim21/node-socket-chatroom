@@ -233,6 +233,9 @@
          } else {
             currentRoomname = roomname;
             socketio.emit("enter_room", { roomname : roomname, username: username });
+            document.getElementById("chatrooms").setAttribute("style", "display:none");
+            document.getElementById("room-div").setAttribute("style", "visibility:visible");
+            document.getElementById("room-name-display").textContent = roomname;
          }
 
          // socketio.emit("request_enter_room", { roomname : roomname, hasPassword: hasPassword, username: username });
@@ -273,14 +276,19 @@
          });
 
       function leaveRoom() {
-         socketio.emit("leave_room", { username: user });
-         // sus? should I do something here to prevent weird stuff
+         socketio.emit("leave_room", { username: user, roomname: currentRoomname });
 
          // hide room-div
          document.getElementById("chatrooms").setAttribute("style", "display:unset");
          document.getElementById("room-div").setAttribute("style", "visibility:hidden");
          // show starting page
       }
+
+      socketio.on("you_are_kicked", function(data) {
+         // hide room-div
+         document.getElementById("chatrooms").setAttribute("style", "display:unset");
+         document.getElementById("room-div").setAttribute("style", "visibility:hidden");
+      });
 
       socketio.on("get_rooms",function(data) {
             rooms = data.rooms;

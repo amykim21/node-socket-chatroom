@@ -248,66 +248,75 @@ io.sockets.on("connection", function (socket) {
 
 
 
-		// leave room
-		socket.on("leave_room", function (data) {
-			// socket.removeAllListeners('enter_room'); // sus
-			// socket.removeListener("enter_room");
-			// getEventListeners(socket)['enter_room'][0].remove();
-			socket.leave(roomname);
-			socket.room = ""; // wahwahwah
-			console.log("sockets: " + connectedSockets);
+		// // leave room
+		// socket.on("leave_room", function (data) {
+		// 	// socket.removeAllListeners('enter_room'); // sus
+		// 	// socket.removeListener("enter_room");
+		// 	// getEventListeners(socket)['enter_room'][0].remove();
+		// 	socket.leave(roomname);
+		// 	socket.room = ""; // wahwahwah
+		// 	console.log("sockets: " + connectedSockets);
 
-			// delete user from rooms map
-			let leavingUser = data.username;
-			let room;
-			for(r of rooms) {
-				if(r.roomname == roomname) {
-					room = r;
-				}
-			}
-			let usersArr = r.room_users;
-			console.log("before roomUsers: " + usersArr);
-			const index = usersArr.indexOf(leavingUser);
-			if(index > -1) {
-				usersArr.splice(index, 1);
-			}
-			room.room_users = usersArr;
-			let roomUsers = "Room users: " + room.room_users.join(", ");
-			console.log("after roomUsers: " + room.room_users.toString());
+		// 	// delete user from rooms map
+		// 	let leavingUser = data.username;
+		// 	let room;
+		// 	for(r of rooms) {
+		// 		if(r.roomname == roomname) {
+		// 			room = r;
+		// 		}
+		// 	}
+		// 	let usersArr = r.room_users;
+		// 	console.log("before roomUsers: " + usersArr);
+		// 	const index = usersArr.indexOf(leavingUser);
+		// 	if(index > -1) {
+		// 		usersArr.splice(index, 1);
+		// 	}
+		// 	room.room_users = usersArr;
+		// 	let roomUsers = "Room users: " + room.room_users.join(", ");
+		// 	console.log("after roomUsers: " + room.room_users.toString());
 
-			io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });
+		// 	io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });
 
-			io.sockets.to(roomname).emit(
-				"message_to_client", { message: `${leavingUser} has left the chatroom.` }
-			);
-		});
+		// 	io.sockets.to(roomname).emit(
+		// 		"message_to_client", { message: `${leavingUser} has left the chatroom.` }
+		// 	);
+		// });
 	});
 
+			// leave room moved to outside
+			socket.on("leave_room", function (data) {
+				// socket.removeAllListeners('enter_room'); // sus
+				// socket.removeListener("enter_room");
+				// getEventListeners(socket)['enter_room'][0].remove();
+				const roomname = data.roomname;
+				const leavingUser = data.username;
+				socket.leave(roomname);
+				socket.room = ""; // wahwahwah
+				console.log("sockets: " + connectedSockets);
+	
+				// delete user from rooms map
+				let room;
+				for(r of rooms) {
+					if(r.roomname == roomname) {
+						room = r;
+					}
+				}
+				let usersArr = r.room_users;
+				console.log("before roomUsers: " + usersArr);
+				const index = usersArr.indexOf(leavingUser);
+				if(index > -1) {
+					usersArr.splice(index, 1);
+				}
+				room.room_users = usersArr;
+				let roomUsers = "Room users: " + room.room_users.join(", ");
+				console.log("after roomUsers: " + room.room_users.toString());
+	
+				io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });
+	
+				io.sockets.to(roomname).emit(
+					"message_to_client", { message: `${leavingUser} has left the chatroom.` }
+				);
+			});
 
-
-			// leave room
-			// socket.on("leave_room", function (data) {
-			// 	let roomname = "a";
-			// 	let username = "q";
-			// 	socket.leave(roomname);
-			// 	socket.room = ""; // wahwahwah
-			// 	console.log("sockets: " + connectedSockets);
-	
-			// 	// delete user from rooms map
-			// 	let usersArr = rooms.get(roomname)["room_users"];
-			// 	console.log("before roomUsers: " + usersArr);
-			// 	rooms.get(roomname)["room_users"] = usersArr.splice(usersArr.indexOf(username), 1);
-			// 	rooms.set(roomname, {"room_users": usersArr, "password": rooms.get(roomname)["password"], "creator_socket": rooms.get(roomname)["creator_socket"] });
-	
-			// 	let roomUsers = "Room users: " + rooms.get(roomname)["room_users"].join(", ");
-	
-			// 	console.log("after roomUsers: " + rooms.get(roomname)["room_users"]);
-	
-			// 	io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });
-	
-			// 	io.sockets.to(roomname).emit(
-			// 		"message_to_client", { message: `${username} has left the chatroom.` }
-			// 	);
-			// });
     
 });
