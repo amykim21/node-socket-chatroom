@@ -55,6 +55,7 @@
       <script>
       var socketio = io.connect();
       let user = "";
+      let currentRoomname = "";
       let rooms = []; // {roomname, hasPassword}
 
       socketio.on("message_to_client",function(data) {
@@ -84,8 +85,8 @@
 
       function kickUser() {
          let kickTarget = document.getElementById("kick_input").value;
-
-         socketio.emit("kick", { target: kickTarget });
+         console.log("KICKTARGET: " + kickTarget + " from " + currentRoomname);
+         socketio.emit("kick", { username: user, roomname: currentRoomname, target: kickTarget });
       }
 
       // function getRooms() {
@@ -230,6 +231,7 @@
             socketio.emit("enter_protected_room", { password_guess : password_guess, roomname: roomname });
 
          } else {
+            currentRoomname = roomname;
             socketio.emit("enter_room", { roomname : roomname, username: username });
          }
 
@@ -259,11 +261,9 @@
          socketio.on("password_check", function(data) {
             console.log("PW CHECK");
             if(data["password_correct"]) {
-               socketio.emit("enter_room", { roomname : data.roomname, username: username });
-               console.log("emitting enter_room"); // !! this prints twice
-               // socketio.on("get_room_users",function(data) {
-               //    document.getElementById("room-users").textContent = data["message"];
-               // });
+               currentRoomname = data.roomname;
+               socketio.emit("enter_room", { roomname : data.roomname, username: user });
+               console.log("emitting enter_room"); 
                document.getElementById("chatrooms").setAttribute("style", "display:none");
                document.getElementById("room-div").setAttribute("style", "visibility:visible");
                document.getElementById("room-name-display").textContent = data.roomname;

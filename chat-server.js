@@ -151,7 +151,6 @@ io.sockets.on("connection", function (socket) {
 
 	socket.on('enter_room', function({ roomname : roomname, username: username }) {
 		console.log("ENTER");
-		// rooms.get(roomname)["room_users"].push(username);
 		let room;
 		rooms.forEach(r => {
 			if(r.roomname == roomname) {
@@ -166,15 +165,6 @@ io.sockets.on("connection", function (socket) {
 
 		console.log("room.room_users: " + room.room_users);
 		let roomUsers = "Room users: " + room.room_users.join(", ");
-		// wahwahwah
-		// let roomUsers = "Room users: ";
-		// connectedSockets.forEach(socket => {
-		// 	if(socket.room == roomname) {
-		// 		roomUsers = roomUsers + ", " + socket.username;
-		// 	}
-		// });
-		// wahwahwah
-
 		io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });
 
 		io.sockets.to(roomname).emit(
@@ -204,16 +194,36 @@ io.sockets.on("connection", function (socket) {
 		});
 
 		socket.on("kick", function(data) {
-			if(socket.username == rooms.get(roomname)["creator_socket"].username) {
+			console.log("inside kick");
+			let roomname = data.roomname;
+			let room;
+			for(r of rooms) {
+				if (r.roomname == roomname) {
+					room = r;
+				}
+			}
+			if(socket.username == r.creator_socket.username) {
+				console.log("you are the creator");
 				connectedSockets.forEach(s => {
-					if(s.username = data["target"]) {
+					if(s.username = data.target) {
 						s.leave(roomname);
 						s.emit("you_are_kicked", {}); 
+
 						// todo: remove data["target"] from rooms map
-						console.log("socket.username: " + socket.username);
-						let message = data["target"] + " has been kicked by " + socket.username;
+						let usersArr = r.room_users;
+						const index = usersArr.indexOf(username);
+						if(index > -1) {
+							usersArr.splice(index, 1);
+						}
+						room.room_users = usersArr;
+						// let message = data.target + " has been kicked by " + socket.username;
+						let message = data.target + " has been kicked by " + data.username;
 						io.sockets.to(roomname).emit("message_to_client", { message: message })
-					}
+						console.log("kick msg: " + message); // ?? says kick msg: e has been kicked by e; target correct, but socket.username weird
+						// ?? message shows up in e (kicked person)'s chatlog
+						// update room users
+						let roomUsers = "Room users: " + room.room_users.join(", ");
+						io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });					}
 				});
 			}
 		});
@@ -246,6 +256,7 @@ io.sockets.on("connection", function (socket) {
 			console.log("sockets: " + connectedSockets);
 
 			// delete user from rooms map
+			let leavingUser = data.username;
 			let room;
 			for(r of rooms) {
 				if(r.roomname == roomname) {
@@ -254,19 +265,18 @@ io.sockets.on("connection", function (socket) {
 			}
 			let usersArr = r.room_users;
 			console.log("before roomUsers: " + usersArr);
-			const index = usersArr.indexOf(username);
+			const index = usersArr.indexOf(leavingUser);
 			if(index > -1) {
 				usersArr.splice(index, 1);
 			}
 			room.room_users = usersArr;
-			// rooms.set(roomname, {"room_users": usersArr, "password": rooms.get(roomname)["password"], "creator_socket": rooms.get(roomname)["creator_socket"] });
 			let roomUsers = "Room users: " + room.room_users.join(", ");
 			console.log("after roomUsers: " + room.room_users.toString());
 
 			io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });
 
 			io.sockets.to(roomname).emit(
-				"message_to_client", { message: `${username} has left the chatroom.` }
+				"message_to_client", { message: `${leavingUser} has left the chatroom.` }
 			);
 		});
 	});
