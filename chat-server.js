@@ -28,6 +28,10 @@ let usernames = []; // todo: don't need this, just use users.keys() instead
 let users = {}; // dictionary of (nickname, socket)
 let rooms = []; // array of room objects (roomname, array of users, password, creatorSocket, bannedUsers)
 let profanities = ["fuck", "shit", "asshole", "ass", "whore", "bitch", "motherfucker"];
+
+function getCurrentTime() {
+	return new Date().toLocaleTimeString('en-US');
+}
 // list of rooms can be accessed with io.sockets.adapter.rooms?
 
 // Attach our Socket.IO server to our HTTP server to listen
@@ -176,7 +180,7 @@ io.sockets.on("connection", function (socket) {
 
 	});
 
-			// moved this chunk to outside 'enter_room'
+	// moved this chunk to outside 'enter_room'
 			socket.on('message_to_server', function (data) {
 				// This callback runs when the server receives a new message from the client.
 				console.log("message: " + data["message"]); // log it to the Node.JS output
@@ -186,15 +190,16 @@ io.sockets.on("connection", function (socket) {
 				profanities.forEach(word => {
 					message = message.replace(word, "*".repeat(word.length));
 				});
-				io.sockets.to(data.roomname).emit("message_to_client", { message: message }) // broadcast the message to other users
+				console.log("server getCurrentTime: " + getCurrentTime());
+				io.sockets.to(data.roomname).emit("message_to_client", { message: message, time: getCurrentTime() }) // broadcast the message to other users
 			});
 	
 			socket.on('whisper_to_server', function (data) {
 				// This callback runs when the server receives a new message from the client.
 				let whisper = data["user"] + " sent a private message to " + data["target"] + ": " + data["whisper"];
 				console.log(whisper); // log it to the Node.JS output
-				socket.emit("message_to_client", { message: whisper }); // wah added just now
-				io.sockets.to(users[data["target"]].id).emit("message_to_client", { message: whisper });
+				socket.emit("message_to_client", { message: whisper, time: getCurrentTime() }); // wah added just now
+				io.sockets.to(users[data["target"]].id).emit("message_to_client", { message: whisper, time: getCurrentTime() });
 			});
 
 	socket.on("kick", function(data) {

@@ -70,9 +70,25 @@
       let rooms = []; // {roomname, hasPassword}
 
       socketio.on("message_to_client",function(data) {
-         //Append an HR thematic break and the escaped HTML of the new message
-         document.getElementById("chatlog").appendChild(document.createElement("hr"));
-         document.getElementById("chatlog").appendChild(document.createTextNode(data['message']));
+         if(data.time == undefined) {
+            //Append an HR thematic break and the escaped HTML of the new message
+            document.getElementById("chatlog").appendChild(document.createElement("hr"));
+            document.getElementById("chatlog").appendChild(document.createTextNode(data['message']));
+         } else {         
+            document.getElementById("chatlog").appendChild(document.createElement("hr"));
+            let timeNode = document.createElement("span");
+            const padding = document.createTextNode(" ");
+            timeNode.appendChild(document.createTextNode(" " + data.time));
+            timeNode.setAttribute("style", "font-size:25px");
+            // timeNode.style.fontSize = "small";
+            timeNode.setAttribute("style", "color:gray");
+            const chatlog = document.getElementById("chatlog");
+            chatlog.appendChild(document.createTextNode(data['message']));
+            chatlog.appendChild(padding);
+            chatlog.appendChild(padding);
+            chatlog.appendChild(padding);
+            chatlog.appendChild(timeNode);
+         }
       });
 
       function sendMessage(){
