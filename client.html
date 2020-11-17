@@ -32,11 +32,17 @@
          <input type="text" id="message_input" required>
          <button id="send-btn">send</button>
          <br>
+
          <label for="whisper_input">Whisper: </label>
          <input type="text" id="whisper_input" required>
          <span> to </span>
          <input type="text" id="whisper_target" required>
          <button id="whisper-btn">whisper</button>
+         <br>
+
+         <label for="announcement_input">Announce: </label>
+         <input type="text" id="announcement_input" required>
+         <button id="announce-btn">announce</button>
          <br>
 
          <label for="kick_input">Kick </label>
@@ -49,6 +55,11 @@
          <input type="text" id="ban_input" required>
          <span> from the room.</span>
          <button id="ban-btn">ban</button>
+         <br>
+
+         <div id="announcements"><h3>Announcements:</h3></div>
+
+         <h3>Chatlog</h3>
          <div id="chatlog"></div>
       </div>
 
@@ -66,7 +77,7 @@
 
       function sendMessage(){
          var msg = document.getElementById("message_input").value;
-         socketio.emit("message_to_server", {message:msg, user: user});
+         socketio.emit("message_to_server", {message:msg, user: user, roomname: currentRoomname});
       }
 
       socketio.on("whisper_to_client",function(data) {
@@ -81,6 +92,10 @@
          let whisperTarget = document.getElementById("whisper_target").value;
 
          socketio.emit("whisper_to_server", { whisper: whisper, user: user, target: whisperTarget});
+      }
+
+      function announce() {
+         let announcement = document.getElementById("announcement_input").value;
       }
 
       function kickUser() {
@@ -217,7 +232,8 @@
                   }, false);
                   roomElement.appendChild(joinButton);
                }
-      
+               
+
                document.getElementById("chatrooms-div").appendChild(roomElement);
             });
       });
@@ -235,6 +251,7 @@
 
       document.getElementById("send-btn").addEventListener("click", sendMessage, false);
       document.getElementById("whisper-btn").addEventListener("click", sendWhisper, false);
+      document.getElementById("announce-btn").addEventListener("click", announce, false);
       document.getElementById("kick-btn").addEventListener("click", kickUser, false);
       document.getElementById("ban-btn").addEventListener("click", banUser, false);
       document.getElementById("leave-room-btn").addEventListener("click", leaveRoom, false);

@@ -27,7 +27,7 @@ let connectedSockets = [];
 let usernames = []; // todo: don't need this, just use users.keys() instead
 let users = {}; // dictionary of (nickname, socket)
 let rooms = []; // array of room objects (roomname, array of users, password, creatorSocket, bannedUsers)
-let profanities = ["fuck", "shit", "asshole", "whore", "bitch", "motherfucker"];
+let profanities = ["fuck", "shit", "asshole", "ass", "whore", "bitch", "motherfucker"];
 // list of rooms can be accessed with io.sockets.adapter.rooms?
 
 // Attach our Socket.IO server to our HTTP server to listen
@@ -79,7 +79,6 @@ io.sockets.on("connection", function (socket) {
 		} else {
 			rooms.push({roomname: roomname, room_users: [], password: password, creator_socket: socket, banned_users: [] });
 			console.log("new_room rooms: " + rooms.toString());
-			// rooms.set(roomname, { "room_users": [], "password": password, "creator_socket": socket });
 			io.sockets.emit("new_room_added", { message : `${roomname} has been created.`, roomname: roomname } );
 
 			const sentRooms = [];
@@ -87,9 +86,6 @@ io.sockets.on("connection", function (socket) {
 				sentRooms.push({ roomname: room.roomname, room_users: room.room_users, hasPassword: (room.password != ""), banned_users: room.banned_users });
 			});
 			socket.emit("get_rooms", { rooms : sentRooms } );
-			// io.sockets.emit("get_rooms", { rooms : Array.from(rooms.keys())/*, password_protected: password_protected, password: rooms.get(roomname)["password"] */} );
-			// socket.emit("new_room_added", { message : `${roomname} has been created.`, roomname: roomname } );
-			// socket.emit("get_rooms", { rooms : Array.from(rooms.keys()) } );
 		}
 
 	});
@@ -157,28 +153,49 @@ io.sockets.on("connection", function (socket) {
 		);
 
 
-		// moved this chunk to inside 'enter_room'
-		socket.on('message_to_server', function (data) {
-			// This callback runs when the server receives a new message from the client.
-			console.log("message: " + data["message"]); // log it to the Node.JS output
-			// io.to(roomname).emit(data["message"]); // wah
-			let message = data["user"] + ": " + data["message"];
-			// creative portion: replace swear words with *
-			profanities.forEach(word => {
-				message = message.replace(word, "*".repeat(word.length));
-			});
-			io.sockets.to(roomname).emit("message_to_client", { message: message }) // broadcast the message to other users
-		});
+		// // moved this chunk to inside 'enter_room'
+		// socket.on('message_to_server', function (data) {
+		// 	// This callback runs when the server receives a new message from the client.
+		// 	console.log("message: " + data["message"]); // log it to the Node.JS output
+		// 	// io.to(roomname).emit(data["message"]); // wah
+		// 	let message = data["user"] + ": " + data["message"];
+		// 	// creative portion: replace swear words with *
+		// 	profanities.forEach(word => {
+		// 		message = message.replace(word, "*".repeat(word.length));
+		// 	});
+		// 	io.sockets.to(roomname).emit("message_to_client", { message: message }) // broadcast the message to other users
+		// });
 
-		socket.on('whisper_to_server', function (data) {
-			// This callback runs when the server receives a new message from the client.
-			let whisper = data["user"] + " sent a private message to " + data["target"] + ": " + data["whisper"];
-			console.log(whisper); // log it to the Node.JS output
-			socket.emit("message_to_client", { message: whisper }); // wah added just now
-			io.sockets.to(users[data["target"]].id).emit("message_to_client", { message: whisper });
-		});
+		// socket.on('whisper_to_server', function (data) {
+		// 	// This callback runs when the server receives a new message from the client.
+		// 	let whisper = data["user"] + " sent a private message to " + data["target"] + ": " + data["whisper"];
+		// 	console.log(whisper); // log it to the Node.JS output
+		// 	socket.emit("message_to_client", { message: whisper }); // wah added just now
+		// 	io.sockets.to(users[data["target"]].id).emit("message_to_client", { message: whisper });
+		// });
 
 	});
+
+			// moved this chunk to outside 'enter_room'
+			socket.on('message_to_server', function (data) {
+				// This callback runs when the server receives a new message from the client.
+				console.log("message: " + data["message"]); // log it to the Node.JS output
+				// io.to(roomname).emit(data["message"]); // wah
+				let message = data["user"] + ": " + data["message"];
+				// creative portion: replace swear words with *
+				profanities.forEach(word => {
+					message = message.replace(word, "*".repeat(word.length));
+				});
+				io.sockets.to(data.roomname).emit("message_to_client", { message: message }) // broadcast the message to other users
+			});
+	
+			socket.on('whisper_to_server', function (data) {
+				// This callback runs when the server receives a new message from the client.
+				let whisper = data["user"] + " sent a private message to " + data["target"] + ": " + data["whisper"];
+				console.log(whisper); // log it to the Node.JS output
+				socket.emit("message_to_client", { message: whisper }); // wah added just now
+				io.sockets.to(users[data["target"]].id).emit("message_to_client", { message: whisper });
+			});
 
 	socket.on("kick", function(data) {
 		console.log("inside kick");
@@ -189,7 +206,7 @@ io.sockets.on("connection", function (socket) {
 				room = r;
 			}
 		}
-		if(socket.username == r.creator_socket.username) {
+		if(socket.username == room.creator_socket.username) {
 			console.log("you are the creator");
 			connectedSockets.forEach(s => {
 				console.log("connected s: " + s.username);
