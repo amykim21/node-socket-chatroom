@@ -1,0 +1,23 @@
+{
+  "name": "module6-group-module6-455334",
+  "version": "1.0.0",
+  "description": "455334 REPLACE-THIS-TEXT-WITH-YOUR-PARTNERS-STUDENT-ID-IF-WORKING-IN-A-GROUP",
+  "main": "chat-server.js",
+  "dependencies": {
+    "socket.io": "^3.0.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cse330-fall-2020/module6-group-module6-455334.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/cse330-fall-2020/module6-group-module6-455334/issues"
+  },
+  "homepage": "https://github.com/cse330-fall-2020/module6-group-module6-455334#readme"
+}
