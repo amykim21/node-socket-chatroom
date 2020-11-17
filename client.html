@@ -70,6 +70,7 @@
       let rooms = []; // {roomname, hasPassword}
 
       socketio.on("message_to_client",function(data) {
+         console.log("message: " + data.message);
          if(data.time == undefined) {
             //Append an HR thematic break and the escaped HTML of the new message
             document.getElementById("chatlog").appendChild(document.createElement("hr"));
@@ -204,6 +205,10 @@
 
       function leaveRoom() {
          socketio.emit("leave_room", { username: user, roomname: currentRoomname });
+         console.log("leave_room");
+
+         // clear previous messages from chatlog
+         document.getElementById("chatlog").innerHTML = "";
 
          // hide room-div
          document.getElementById("chatrooms").setAttribute("style", "display:unset");
@@ -218,12 +223,18 @@
       });
 
       socketio.on("you_are_kicked", function(data) {
+         // clear previous messages from chatlog
+         document.getElementById("chatlog").innerHTML = "";
+
          // hide room-div
          document.getElementById("chatrooms").setAttribute("style", "display:unset");
          document.getElementById("room-div").setAttribute("style", "visibility:hidden");
       });
 
       socketio.on("you_are_banned", function(data) {
+         // clear previous messages from chatlog
+         document.getElementById("chatlog").innerHTML = "";
+         
          // hide room-div
          document.getElementById("chatrooms").setAttribute("style", "display:unset");
          document.getElementById("room-div").setAttribute("style", "visibility:hidden");
