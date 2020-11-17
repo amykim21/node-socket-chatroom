@@ -57,7 +57,7 @@
          <button id="ban-btn">ban</button>
          <br>
 
-         <div id="announcements"><h3>Announcements:</h3></div>
+         <div><h3>Announcements: <span id="announcements"></span></h3></div>
 
          <h3>Chatlog</h3>
          <div id="chatlog"></div>
@@ -112,6 +112,7 @@
 
       function announce() {
          let announcement = document.getElementById("announcement_input").value;
+         socketio.emit("announce", { username: user, roomname: currentRoomname, announcement: announcement });
       }
 
       function kickUser() {
@@ -209,6 +210,12 @@
          document.getElementById("room-div").setAttribute("style", "visibility:hidden");
          // show starting page
       }
+
+      socketio.on("announce", function(data) {
+         const announcement = data.announcement;
+         document.getElementById("announcements").innerHTML = "";
+         document.getElementById("announcements").appendChild(document.createTextNode(announcement));
+      });
 
       socketio.on("you_are_kicked", function(data) {
          // hide room-div

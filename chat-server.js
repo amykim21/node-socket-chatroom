@@ -47,25 +47,20 @@ io.sockets.on("connection", function (socket) {
 		} else {
 			usernames.push(username);
 			socket.emit("new_user_added", { message : `Welcome, ${username}`} );
-			
-			// emit list of rooms available
-			// console.log("room keys: " + Array.from(rooms.keys()));
-			// console.log("roomusers: " + socket.roomUsers);
-			// console.log("rooms: " + socket.rooms);
+		
 			socket.username = username;
-			connectedSockets.push(socket); // wahwahwah
+			connectedSockets.push(socket);
 
 
 			users[username] = socket;
-			console.log("username: " + socket.username); // wahwah
+			console.log("username: " + socket.username);
 
 
 			const sentRooms = [];
 			rooms.forEach(room => {
-				sentRooms.push({ roomname: room.roomname, room_users: room.room_users, hasPassword: (room.password != ""), banned_users: room.banned_users });
+				sentRooms.push({ roomname: room.roomname, room_users: room.room_users, hasPassword: (room.password != ""), banned_users: room.banned_users, announcement: room.announcement });
 			});
 			socket.emit("get_rooms", { rooms : sentRooms } );
-			// socket.emit("get_rooms", { rooms : Array.from(rooms.keys()) } );
 		}
 
 	});
@@ -81,13 +76,13 @@ io.sockets.on("connection", function (socket) {
 		if(duplicateRoomname) {
 			socket.emit("new_room_denied", { message : `Roomname "${roomname}" already exists.`, roomname: roomname} );
 		} else {
-			rooms.push({roomname: roomname, room_users: [], password: password, creator_socket: socket, banned_users: [] });
+			rooms.push({roomname: roomname, room_users: [], password: password, creator_socket: socket, banned_users: [], announcement: "" });
 			console.log("new_room rooms: " + rooms.toString());
 			io.sockets.emit("new_room_added", { message : `${roomname} has been created.`, roomname: roomname } );
 
 			const sentRooms = [];
 			rooms.forEach(room => {
-				sentRooms.push({ roomname: room.roomname, room_users: room.room_users, hasPassword: (room.password != ""), banned_users: room.banned_users });
+				sentRooms.push({ roomname: room.roomname, room_users: room.room_users, hasPassword: (room.password != ""), banned_users: room.banned_users, announcement: room.announcement });
 			});
 			socket.emit("get_rooms", { rooms : sentRooms } );
 		}
@@ -153,8 +148,9 @@ io.sockets.on("connection", function (socket) {
 		io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });
 
 		io.sockets.to(roomname).emit(
-			"message_to_client", { message: `${username} has joined the chatroom.` }
+			"message_to_client", { message: `${username} has joined the chatroom.`/*, announcement: room.announcement */}
 		);
+		io.sockets.to(roomname).emit("announce", { announcement: room.announcement });
 
 
 		// // moved this chunk to inside 'enter_room'
@@ -191,7 +187,7 @@ io.sockets.on("connection", function (socket) {
 					message = message.replace(word, "*".repeat(word.length));
 				});
 				console.log("server getCurrentTime: " + getCurrentTime());
-				io.sockets.to(data.roomname).emit("message_to_client", { message: message, time: getCurrentTime() }) // broadcast the message to other users
+				io.sockets.to(data.roomname).emit("message_to_client", { message: message, time: getCurrentTime() }); // broadcast the message to other users
 			});
 	
 			socket.on('whisper_to_server', function (data) {
@@ -201,6 +197,46 @@ io.sockets.on("connection", function (socket) {
 				socket.emit("message_to_client", { message: whisper, time: getCurrentTime() }); // wah added just now
 				io.sockets.to(users[data["target"]].id).emit("message_to_client", { message: whisper, time: getCurrentTime() });
 			});
+
+	socket.on("announce", function(data) {
+		let roomname = data.roomname;
+		let room;
+		for(r of rooms) {
+			if (r.roomname == roomname) {
+				room = r;
+			}
+		}
+		if(socket.username == room.creator_socket.username) {
+			console.log("you are the creator");
+			io.sockets.to(roomname).emit("announce", { announcement: data.announcement });
+
+			// add announcement to rooms
+			room.announcement = data.announcement;
+
+			// connectedSockets.forEach(s => {
+			// 	console.log("connected s: " + s.username);
+			// 	if(s.username == data.target) {
+			// 		s.leave(roomname);
+			// 		s.emit("you_are_kicked", {});
+			// 		console.log("s.username: " + s.username);
+
+			// 		// remove data.target from rooms map
+			// 		let usersArr = r.room_users;
+			// 		const index = usersArr.indexOf(data.target);
+			// 		if(index > -1) {
+			// 			usersArr.splice(index, 1);
+			// 		}
+			// 		room.room_users = usersArr;
+			// 		let message = data.target + " has been kicked by " + data.username;
+			// 		io.sockets.to(roomname).emit("message_to_client", { message: message })
+			// 		// update room users
+			// 		let roomUsers = "Room users: " + room.room_users.join(", ");
+			// 		io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });					
+			// 	}
+			// });
+		}
+
+	});
 
 	socket.on("kick", function(data) {
 		console.log("inside kick");
@@ -231,7 +267,8 @@ io.sockets.on("connection", function (socket) {
 					io.sockets.to(roomname).emit("message_to_client", { message: message })
 					// update room users
 					let roomUsers = "Room users: " + room.room_users.join(", ");
-					io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });					}
+					io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });					
+				}
 			});
 		}
 	});
@@ -267,7 +304,7 @@ io.sockets.on("connection", function (socket) {
 					const sentRooms = [];
 					rooms.forEach(r => {
 						console.log("r.bannedUsers: " + r.banned_users);
-						sentRooms.push({ roomname: r.roomname, room_users: r.room_users, hasPassword: (r.password != ""), banned_users: r.banned_users });
+						sentRooms.push({ roomname: r.roomname, room_users: r.room_users, hasPassword: (r.password != ""), banned_users: r.banned_users, announcement: r.announcement });
 					});
 					socket.emit("get_rooms", { rooms : sentRooms } );
 
