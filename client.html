@@ -27,7 +27,7 @@
 
       <div id="room-div" style="visibility:hidden">
          <button id="leave-room-btn">Leave Room</button>
-         <h3 id="room-name-display">Room</h3>
+         <h2 id="room-name-display">Room</h2>
          <p id="room-users">room users</p>
          <input type="text" id="message_input" required>
          <button id="send-btn">send</button>
@@ -234,7 +234,7 @@
       socketio.on("you_are_banned", function(data) {
          // clear previous messages from chatlog
          document.getElementById("chatlog").innerHTML = "";
-         
+
          // hide room-div
          document.getElementById("chatrooms").setAttribute("style", "display:unset");
          document.getElementById("room-div").setAttribute("style", "visibility:hidden");
@@ -249,6 +249,8 @@
                let roomElement = document.createElement("hr");
                roomElement.appendChild(document.createTextNode(room.roomname + "\t"));
                roomElement.setAttribute("id", room.roomname);
+
+               console.log("client banned_users: " + room.banned_users);
 
                // show joinButton only if user is not included in banned_users
                if(!room.banned_users.includes(user)) {

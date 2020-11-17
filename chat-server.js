@@ -230,7 +230,7 @@ io.sockets.on("connection", function (socket) {
 						console.log("r.bannedUsers: " + r.banned_users);
 						sentRooms.push({ roomname: r.roomname, room_users: r.room_users, hasPassword: (r.password != ""), banned_users: r.banned_users, announcement: r.announcement });
 					});
-					socket.emit("get_rooms", { rooms : sentRooms } );
+					s.emit("get_rooms", { rooms : sentRooms } );
 
 					let message = data.target + " has been banned by " + data.username;
 					io.sockets.to(roomname).emit("message_to_client", { message: message })
