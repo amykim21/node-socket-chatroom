@@ -23,8 +23,7 @@ const socketio = require("socket.io")(server, {
     wsEngine: 'ws'
 });
 
-// array storing usernames; use array.includes() to see if username already exists, array.push()
-let connectedSockets = []; // wahwahwah
+let connectedSockets = [];
 let usernames = []; // todo: don't need this, just use users.keys() instead
 let users = {}; // dictionary of (nickname, socket)
 let rooms = []; // array of room objects (roomname, array of users, password, creatorSocket, bannedUsers)
@@ -59,7 +58,7 @@ io.sockets.on("connection", function (socket) {
 
 			const sentRooms = [];
 			rooms.forEach(room => {
-				sentRooms.push({ roomname: room.roomname, room_users: room.room_users, hasPassword: (room.password != "") });
+				sentRooms.push({ roomname: room.roomname, room_users: room.room_users, hasPassword: (room.password != ""), banned_users: room.banned_users });
 			});
 			socket.emit("get_rooms", { rooms : sentRooms } );
 			// socket.emit("get_rooms", { rooms : Array.from(rooms.keys()) } );
@@ -85,7 +84,7 @@ io.sockets.on("connection", function (socket) {
 
 			const sentRooms = [];
 			rooms.forEach(room => {
-				sentRooms.push({ roomname: room.roomname, room_users: room.room_users, hasPassword: (room.password != "") });
+				sentRooms.push({ roomname: room.roomname, room_users: room.room_users, hasPassword: (room.password != ""), banned_users: room.banned_users });
 			});
 			socket.emit("get_rooms", { rooms : sentRooms } );
 			// io.sockets.emit("get_rooms", { rooms : Array.from(rooms.keys())/*, password_protected: password_protected, password: rooms.get(roomname)["password"] */} );
@@ -106,23 +105,9 @@ io.sockets.on("connection", function (socket) {
 	// wah
 	socket.on("request_enter_room", function({ roomname : roomname, hasPassword: hasPassword, username: username }) {
 		// room password
-		// if(rooms.get(roomname)["password"] != "") {
 		if(hasPassword) {
 			// verify password
 			socket.emit("enter_password", {} );
-			// socket.on("enter_password", function({ password_guess: password_guess }) {
-			// 	if(password_guess.toString() == rooms.get(roomname)["password"]) {
-			// 		// allow user to enter
-			// 		console.log("inside password protected room");
-			// 		socket.emit("password_check", { password_correct: true });
-			// 	} else {
-			// 		// emit message saying "Incorrect password."
-			// 		console.log("incorrect password");
-			// 		socket.emit("password_check", { password_correct: false });
-			// 		// break out of function? how?
-			// 		//return;
-			// 	}
-			// });
 		} else {
 			console.log("WAH");
 			socket.emit("password_check", { password_correct: true });
@@ -193,61 +178,8 @@ io.sockets.on("connection", function (socket) {
 			io.sockets.to(users[data["target"]].id).emit("message_to_client", { message: whisper });
 		});
 
-		// socket.on("kick", function(data) {
-		// 	console.log("inside kick");
-		// 	let roomname = data.roomname;
-		// 	let room;
-		// 	for(r of rooms) {
-		// 		if (r.roomname == roomname) {
-		// 			room = r;
-		// 		}
-		// 	}
-		// 	if(socket.username == r.creator_socket.username) {
-		// 		console.log("you are the creator");
-		// 		connectedSockets.forEach(s => {
-		// 			console.log("connected s: " + s.username);
-		// 			if(s.username == data.target) {
-		// 				s.leave(roomname);
-		// 				s.emit("you_are_kicked", {});
-		// 				console.log("s.username: " + s.username);
-
-		// 				// remove data.target from rooms map
-		// 				let usersArr = r.room_users;
-		// 				const index = usersArr.indexOf(data.username);
-		// 				if(index > -1) {
-		// 					usersArr.splice(index, 1);
-		// 				}
-		// 				room.room_users = usersArr;
-		// 				// let message = data.target + " has been kicked by " + socket.username;
-		// 				let message = data.target + " has been kicked by " + data.username;
-		// 				io.sockets.to(roomname).emit("message_to_client", { message: message })
-		// 				console.log("kick msg: " + message); // ?? says kick msg: e has been kicked by e; target correct, but socket.username weird
-		// 				// ?? message shows up in e (kicked person)'s chatlog
-		// 				// update room users
-		// 				let roomUsers = "Room users: " + room.room_users.join(", ");
-		// 				io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });					}
-		// 		});
-		// 	}
-		// });
-
-		socket.on("ban", function(data) {
-			if(socket.username == rooms.get(roomname)["creator_socket"].username) {
-				connectedSockets.forEach(s => {
-					if(s.username = data["target"]) {
-						s.leave(roomname);
-						s.emit("you_are_banned", {}); 
-						// todo: remove data["target"] from rooms map
-						// todo: add data["target"] to list of banned users
-						console.log("socket.username: " + socket.username);
-						let message = data["target"] + " has been banned by " + socket.username;
-						io.sockets.to(roomname).emit("message_to_client", { message: message })
-					}
-				});
-			}
-		});
 	});
 
-	// kick user moved to outside
 	socket.on("kick", function(data) {
 		console.log("inside kick");
 		let roomname = data.roomname;
@@ -282,37 +214,82 @@ io.sockets.on("connection", function (socket) {
 		}
 	});
 
-			// leave room moved to outside
-			socket.on("leave_room", function (data) {
-				const roomname = data.roomname;
-				const leavingUser = data.username;
-				socket.leave(roomname);
-				socket.room = ""; // wahwahwah
-				console.log("sockets: " + connectedSockets);
-	
-				// delete user from rooms map
-				let room;
-				for(r of rooms) {
-					if(r.roomname == roomname) {
-						room = r;
+	socket.on("ban", function(data) {
+		console.log("inside ban");
+		let roomname = data.roomname;
+		let room;
+		for(r of rooms) {
+			if (r.roomname == roomname) {
+				room = r;
+			}
+		}
+		if(socket.username == r.creator_socket.username) {
+			console.log("you are the creator");
+			connectedSockets.forEach(s => {
+				console.log("connected s: " + s.username);
+				if(s.username == data.target) {
+					s.leave(roomname);
+					s.emit("you_are_banned", {});
+
+
+					// remove data.target from rooms map
+					let usersArr = r.room_users;
+					const index = usersArr.indexOf(data.target);
+					if(index > -1) {
+						usersArr.splice(index, 1);
 					}
+					room.room_users = usersArr;
+
+					// add data.target to banned_users and send rooms again
+					room.banned_users.push(data.target);
+					const sentRooms = [];
+					rooms.forEach(r => {
+						console.log("r.bannedUsers: " + r.banned_users);
+						sentRooms.push({ roomname: r.roomname, room_users: r.room_users, hasPassword: (r.password != ""), banned_users: r.banned_users });
+					});
+					socket.emit("get_rooms", { rooms : sentRooms } );
+
+					let message = data.target + " has been banned by " + data.username;
+					io.sockets.to(roomname).emit("message_to_client", { message: message })
+					// update room users
+					let roomUsers = "Room users: " + room.room_users.join(", ");
+					io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });
+					
 				}
-				let usersArr = r.room_users;
-				console.log("before roomUsers: " + usersArr);
-				const index = usersArr.indexOf(leavingUser);
-				if(index > -1) {
-					usersArr.splice(index, 1);
-				}
-				room.room_users = usersArr;
-				let roomUsers = "Room users: " + room.room_users.join(", ");
-				console.log("after roomUsers: " + room.room_users.toString());
-	
-				io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });
-	
-				io.sockets.to(roomname).emit(
-					"message_to_client", { message: `${leavingUser} has left the chatroom.` }
-				);
 			});
+		}
+	});
+
+	// leave room moved to outside
+	socket.on("leave_room", function (data) {
+		const roomname = data.roomname;
+		const leavingUser = data.username;
+		socket.leave(roomname);
+		socket.room = ""; // wahwahwah
+	
+		// delete user from rooms map
+		let room;
+		for(r of rooms) {
+			if(r.roomname == roomname) {
+				room = r;
+			}
+		}
+		let usersArr = r.room_users;
+		console.log("before roomUsers: " + usersArr);
+		const index = usersArr.indexOf(leavingUser);
+		if(index > -1) {
+			usersArr.splice(index, 1);
+		}
+		room.room_users = usersArr;
+		let roomUsers = "Room users: " + room.room_users.join(", ");
+		console.log("after roomUsers: " + room.room_users.toString());
+	
+		io.sockets.to(roomname).emit("get_room_users", { message: roomUsers });
+	
+		io.sockets.to(roomname).emit(
+			"message_to_client", { message: `${leavingUser} has left the chatroom.` }
+		);
+	});
 
     
 });

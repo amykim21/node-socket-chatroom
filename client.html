@@ -85,86 +85,15 @@
 
       function kickUser() {
          let kickTarget = document.getElementById("kick_input").value;
-         console.log("KICKTARGET: " + kickTarget + " from " + currentRoomname);
          socketio.emit("kick", { username: user, roomname: currentRoomname, target: kickTarget });
       }
 
-      // function getRooms() {
-      //    // socketio.emit("get_rooms", {});
-      //    socketio.on("get_rooms",function(data) {
-      //       rooms = data.rooms;
-      //       console.log("ROOMS: " + rooms);
-
-      //       document.getElementById("chatrooms-div").innerHTML = ""; // sus; if I delete this line I get 2 duplicate rooms in the list
-      //       rooms.forEach(room => {
-      //          let roomElement = document.createElement("hr");
-      //          roomElement.appendChild(document.createTextNode(room.roomname + "\t"));
-      //          roomElement.setAttribute("id", room.roomname);
-
-      //          let joinButton = document.createElement("button");
-      //          joinButton.setAttribute("id", room.roomname+"-btn");
-      //          joinButton.textContent = "Join";
-      //          joinButton.addEventListener("click", function(event) {
-      //             console.log("ENTERROOM");
-      //             enterRoom(room.roomname, user); // ENTERROOM gets called the correct number of times
-      //          }, false);
-      //          roomElement.appendChild(joinButton);
-
-      //          document.getElementById("chatrooms-div").appendChild(roomElement);
-      //       });
-      //    });
-      // }
-
-      // !! getRooms sketchy, must be adding eventlistener to joinButton every time getRooms gets called, resulting in multiple eventlisteners to joinButton
-      // function getRooms(data) {
-      //    // document.getElementById("chatrooms-div").childNodes.forEach(roomChild => {
-      //    //    roomChild.removeEventListener("click", enterRoom);
-      //    // });
-      //    while (document.getElementById("chatrooms-div").firstChild) {
-      //       document.getElementById("chatrooms-div").removeChild(document.getElementById("chatrooms-div").firstChild);
-      //    }
-      //    document.getElementById("chatrooms-div").innerHTML = ""; // sus; if I delete this line I get 2 duplicate rooms in the list
-      //    rooms = data["rooms"];
-      //    console.log("ROOMS OBJECT FROM SERVER: " + data["rooms"]);
-      //    const password = data["password"];
-      //    rooms.forEach(room => {
-      //       let roomElement = document.createElement("hr");
-      //       roomElement.appendChild(document.createTextNode(room + "\t"));
-      //       roomElement.setAttribute("id", room);
-
-      //       let joinButton = document.createElement("button");
-      //       joinButton.setAttribute("id", room+"-btn");
-      //       joinButton.textContent = "Join";
-      //       roomElement.appendChild(joinButton);
-
-      //       joinButton.addEventListener("click", function(event) {
-      //          console.log("ENTERROOM");
-      //          enterRoom(room, user); // ENTERROOM gets called the correct number of times
-      //       }, false);
-
-      //       document.getElementById("chatrooms-div").appendChild(roomElement);
-      //    });
-         
-      //    // const rooms = data["rooms"];
-      //    // const password = data["password"];
-      //    // rooms.forEach(room => {
-      //    //    let roomElement = document.createElement("hr");
-      //    //    roomElement.appendChild(document.createTextNode(room + "\t"));
-      //    //    roomElement.setAttribute("id", room);
-
-      //    //    let joinButton = document.createElement("button");
-      //    //    joinButton.setAttribute("id", room+"-btn");
-      //    //    joinButton.textContent = "Join";
-      //    //    roomElement.appendChild(joinButton);
-
-      //    //    joinButton.addEventListener("click", function(event) {
-      //    //       console.log("ENTERROOM");
-      //    //       enterRoom(room, user); // ENTERROOM gets called the correct number of times
-      //    //    }, false);
-
-      //    //    document.getElementById("chatrooms-div").appendChild(roomElement);
-      //    // });
-      // }
+      function banUser() {
+         let banarget = document.getElementById("ban_input").value;
+         console.log("banarget: " + banarget + " from " + currentRoomname);
+         socketio.emit("ban", { username: user, roomname: currentRoomname, target: banarget });
+      }
+ 
 
       // create chatroom form
       let roomForm = document.getElementById("room-form");
@@ -188,24 +117,6 @@
          socketio.on("new_user_denied",function(data) {
             document.getElementById("alert").textContent = data['message'];
          });
-
-         // getRooms();
-         // show list of rooms available
-         // socketio.on("get_rooms",function(data) {
-         //       getRooms(data);
-         //       // document.getElementById("chatrooms-div").innerHTML = ""; // clear chatrooms-div?
-         //       // // io.sockets.adapter.rooms
-         //       // const rooms = data["rooms"];
-         //       // rooms.forEach(room => {
-         //       //    let roomElement = document.createElement("hr");
-         //       //    roomElement.appendChild(document.createTextNode(room));
-         //       //    roomElement.setAttribute("id", room);
-         //       //    roomElement.addEventListener("click", function(event) {
-         //       //       enterRoom(room, user);
-         //       //    }, false);
-         //       //    document.getElementById("chatrooms-div").appendChild(roomElement);
-         //       // });
-         //    });
       }
 
       function addRoom() {
@@ -218,7 +129,6 @@
             rooms.push({roomname: roomName, hasPassword: hasPassword });
             document.getElementById("room-alert").textContent = data['message'];
          });
-         // getRooms();
 
          socketio.on("new_room_denied",function(data) {
             document.getElementById("room-alert").textContent = data['message'];
@@ -244,21 +154,6 @@
          // });
          
       }
-
-      // socketio.on("enter_password", function(data) {
-      //       console.log("client inside enter_password");
-      //       let password_guess = prompt("Please enter the room password:", "password");
-      //       socketio.emit("enter_password", { password_guess : password_guess, roomname: roomname });
-
-      //       // if (password_guess == null || password_guess == "") {
-      //       //    txt = "User cancelled the prompt.";
-      //       // } else {
-      //       //    txt = "Hello " + person + "! How are you today?";
-      //       // }
-      // });
-
-         // get list of users
-         // socketio.emit("get_room_users", { roomname: roomname });
          
 
          socketio.on("password_check", function(data) {
@@ -290,6 +185,12 @@
          document.getElementById("room-div").setAttribute("style", "visibility:hidden");
       });
 
+      socketio.on("you_are_banned", function(data) {
+         // hide room-div
+         document.getElementById("chatrooms").setAttribute("style", "display:unset");
+         document.getElementById("room-div").setAttribute("style", "visibility:hidden");
+      });
+
       socketio.on("get_rooms",function(data) {
             rooms = data.rooms;
             console.log("ROOMS: " + rooms);
@@ -300,15 +201,23 @@
                roomElement.appendChild(document.createTextNode(room.roomname + "\t"));
                roomElement.setAttribute("id", room.roomname);
 
-               let joinButton = document.createElement("button");
-               joinButton.setAttribute("id", room.roomname+"-btn");
-               joinButton.textContent = "Join";
-               joinButton.addEventListener("click", function(event) {
-                  console.log("ENTERROOM");
-                  enterRoom(room.roomname, room.hasPassword, user); // ENTERROOM gets called the correct number of times
-               }, false);
-               roomElement.appendChild(joinButton);
-
+               // show joinButton only if user is not included in banned_users
+               if(!room.banned_users.includes(user)) {
+                  let joinButton = document.createElement("button");
+                  joinButton.setAttribute("id", room.roomname+"-btn");
+                  joinButton.textContent = "Join";
+                  joinButton.addEventListener("click", function(event) {
+                     // if user is in banned_users, alert
+                     console.log("banned_users: " + room.banned_users);
+                     enterRoom(room.roomname, room.hasPassword, user);
+                     // if(room.banned_users.includes(user)) {
+                     //    alert("You were banned from this room.");
+                     // }
+                     // else enterRoom(room.roomname, room.hasPassword, user);
+                  }, false);
+                  roomElement.appendChild(joinButton);
+               }
+      
                document.getElementById("chatrooms-div").appendChild(roomElement);
             });
       });
@@ -327,6 +236,7 @@
       document.getElementById("send-btn").addEventListener("click", sendMessage, false);
       document.getElementById("whisper-btn").addEventListener("click", sendWhisper, false);
       document.getElementById("kick-btn").addEventListener("click", kickUser, false);
+      document.getElementById("ban-btn").addEventListener("click", banUser, false);
       document.getElementById("leave-room-btn").addEventListener("click", leaveRoom, false);
       </script>
    </body>
