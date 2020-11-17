@@ -205,13 +205,15 @@ io.sockets.on("connection", function (socket) {
 			if(socket.username == r.creator_socket.username) {
 				console.log("you are the creator");
 				connectedSockets.forEach(s => {
-					if(s.username = data.target) {
+					console.log("connected s: " + s.username);
+					if(s.username == data.target) {
 						s.leave(roomname);
-						s.emit("you_are_kicked", {}); 
+						s.emit("you_are_kicked", {});
+						console.log("s.username: " + s.username);
 
-						// todo: remove data["target"] from rooms map
+						// remove data.target from rooms map
 						let usersArr = r.room_users;
-						const index = usersArr.indexOf(username);
+						const index = usersArr.indexOf(data.username);
 						if(index > -1) {
 							usersArr.splice(index, 1);
 						}
