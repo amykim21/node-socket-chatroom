@@ -2,6 +2,9 @@
 455334
 REPLACE-THIS-TEXT-WITH-YOUR-PARTNERS-STUDENT-ID-IF-WORKING-IN-A-GROUP
 
+Link:
+http://ec2-3-18-104-160.us-east-2.compute.amazonaws.com:3456
+
 Creative Portion:
 1) Profanity Filter:
 If a user types a profanity into the chat, the message will show up as a string of '*' characters (however long the profanity is) in the chatlog.
